@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단어 학습기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f0f4f8;
+            color: #334155;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .main-content {
+            padding: 3rem 2rem;
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            animation: fadeIn 1s ease-out;
+            width: 90%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .button-group {
+            margin-top: 0;
+        }
+        .button-group button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 1.25rem 2rem;
+            margin: 0.75rem 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #ffffff;
+            border-radius: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: none;
+            cursor: pointer;
+        }
+        #flashcard-btn {
+            background-color: #3b82f6;
+        }
+        #quiz-btn {
+            background-color: #10b981;
+        }
+        .button-group button:hover {
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.15);
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80%;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            animation: modalSlideUp 0.3s ease-out;
+        }
+        @keyframes modalSlideUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .v-level-button {
+            padding: 1rem 1.5rem;
+            font-size: 1.125rem;
+            font-weight: bold;
+            background-color: #e2e8f0;
+            color: #4a5568;
+            border-radius: 0.75rem;
+            transition: all 0.2s ease;
+        }
+        .v-level-button:hover {
+            background-color: #cbd5e1;
+            transform: scale(1.05);
+        }
+        .v-level-button:active {
+            transform: scale(1.02);
+        }
+        .close-modal-btn {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            font-size: 2rem;
+            font-weight: bold;
+            line-height: 1;
+            color: #a0aec0;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .close-modal-btn:hover {
+            color: #4a5568;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div class="button-group flex flex-col items-center">
+            <button id="flashcard-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256"><path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40Zm0,160H40V56H216V200Z"></path><path d="M168,88a16,16,0,1,1-16,16A16,16,0,0,1,168,88Z"></path><path d="M120,136H72a8,8,0,0,1,0-16h48a8,8,0,0,1,0,16Z"></path><path d="M184,168H72a8,8,0,0,1,0-16H184a8,8,0,0,1,0,16Z"></path></svg>
+                <span>단어 외우기</span>
+            </button>
+            <button id="quiz-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256"><path d="M232,128a16,16,0,0,1-16,16H178.67a16,16,0,0,1-13.43-7.79l-11.45-22.92a16,1,0,0,0-14.16-8.29H120a16,16,0,0,0-15.1,10.79l-11.45,22.92a16,16,0,0,1-13.43,7.79H40a16,16,0,0,1-16-16V40A16,16,0,0,1,40,24H216a16,16,0,0,1,16,16Z"></path><path d="M216,168a16,16,0,0,1-16,16H56V48H216a16,16,0,0,1,16,16V152A16,16,0,0,1,216,168ZM128,192a64,64,0,1,0,64,64A64,64,0,0,0,128,192Zm0,112a48,48,0,1,1,48-48A48,48,0,0,1,128,304Z"></path></svg>
+                <span>단어 시험 보기</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="v-level-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title" class="text-2xl font-bold text-center mb-6">Level 선택</h2>
+            <div id="v-level-list" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <button class="v-level-button" data-level="101">V101</button>
+                <button class="v-level-button" data-level="201">V201</button>
+                <button class="v-level-button" data-level="301">V301</button>
+                <button class="v-level-button" data-level="401">V401</button>
+            </div>
+            <button id="close-v-level-menu-btn" class="close-modal-btn">&times;</button>
+        </div>
+    </div>
+
+    <script>
+        const vLevelModal = document.getElementById('v-level-modal');
+        const vLevelList = document.getElementById('v-level-list');
+        const modalTitle = document.getElementById('modal-title');
+        const flashcardBtn = document.getElementById('flashcard-btn');
+        const quizBtn = document.getElementById('quiz-btn');
+
+        let selectedMode = '';
+
+        function openVLevelMenu(mode) {
+            selectedMode = mode;
+            modalTitle.textContent = 'Level 선택';
+            vLevelModal.classList.add('active');
+        }
+
+        document.getElementById('close-v-level-menu-btn').addEventListener('click', () => {
+            vLevelModal.classList.remove('active');
+        });
+
+        flashcardBtn.addEventListener('click', () => openVLevelMenu('flashcard'));
+        quizBtn.addEventListener('click', () => openVLevelMenu('quiz'));
+
+        vLevelList.querySelectorAll('.v-level-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const selectedLevel = button.dataset.level;
+                if (selectedMode === 'flashcard') {
+                    // V201로 이동
+                    if (selectedLevel === '201') {
+                        window.location.href = `word_list_v201.html`;
+                    } else {
+                        alert(`V${selectedLevel} 단어장 파일은 아직 준비되지 않았습니다.`);
+                    }
+                } else if (selectedMode === 'quiz') {
+                    // V201로 이동
+                    if (selectedLevel === '201') {
+                        window.location.href = `word_quiz_v201.html`;
+                    } else {
+                        alert(`V${selectedLevel} 단어 시험 파일은 아직 준비되지 않았습니다.`);
+                    }
+                }
+                vLevelModal.classList.remove('active');
+            });
+        });
+    </script>
+</body>
+</html>
