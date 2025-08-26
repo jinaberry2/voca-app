@@ -2340,34 +2340,41 @@
                 }
             }
 
-    // 학습 완료 화면 렌더링
-    function renderCompletionCard() {
-        const unknownWords = sessionWords.filter(w => w.status === 'unknown');
-        const unknownCount = unknownWords.length;
+            // 학습 완료 화면 렌더링
+                function renderCompletionCard() {
+                    const unknownWords = sessionWords.filter(w => w.status === 'unknown');
+                    const unknownCount = unknownWords.length;
 
-        switchToView('completion-view');
+                    switchToView('completion-view');
 
-        completionViewEl.innerHTML = `
-            <div>
-                <h2 class="text-2xl font-bold text-slate-800 mb-4">학습 완료!</h2>
-                <p class="text-slate-600 mb-6">모르는 단어: ${unknownCount}개</p>
-                <div class="flex flex-col gap-4 w-full">
-                    <button id="review-unknown-btn" class="w-full px-6 py-3 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 transition">모르는 단어 복습하기</button>
-                    <button id="restart-all-btn" class="w-full px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-800 transition">전체 단어 다시 학습</button>
-                    <button id="back-to-menu-btn" class="w-full px-6 py-3 bg-slate-400 text-white font-semibold rounded-lg shadow-md hover:bg-slate-500 transition">메뉴로 돌아가기</button>
-                </div>
-            </div>
-        `;
+                    completionViewEl.innerHTML = `
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-800 mb-4">학습 완료!</h2>
+                            <p class="text-slate-600 mb-6">모르는 단어: ${unknownCount}개</p>
+                            <div class="flex flex-col gap-4 w-full">
+                                <button id="review-unknown-btn" class="w-full px-6 py-3 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 transition">모르는 단어 복습하기</button>
+                                <button id="restart-all-btn" class="w-full px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-800 transition">전체 단어 다시 학습</button>
+                                <button id="back-to-menu-btn" class="w-full px-6 py-3 bg-slate-400 text-white font-semibold rounded-lg shadow-md hover:bg-slate-500 transition">메뉴로 돌아가기</button>
+                            </div>
+                        </div>
+                    `;
 
-        progressIndicatorEl.textContent = '학습 완료';
+                    progressIndicatorEl.textContent = '학습 완료';
 
-        document.getElementById('review-unknown-btn').disabled = unknownCount === 0;
-        // 모르는 단어 복습 시, isReview 플래그를 true로 전달
-        document.getElementById('review-unknown-btn').addEventListener('click', () => startNewSession(unknownWords, true));
-        document.getElementById('restart-all-btn').addEventListener('click', () => startNewSession(currentChapter));
-        document.getElementById('back-to-menu-btn').addEventListener('click', openMenu);
-    }
-
+                    document.getElementById('review-unknown-btn').disabled = unknownCount === 0;
+                    // 모르는 단어 복습
+                    document.getElementById('review-unknown-btn').addEventListener('click', () => {
+                        startNewSession(unknownWords, true);
+                    });
+                    // 전체 단어 다시 학습 (기록 초기화)
+                    document.getElementById('restart-all-btn').addEventListener('click', () => {
+                        delete chapterStatuses[currentChapter];
+                        localStorage.setItem('chapterStatuses', JSON.stringify(chapterStatuses));
+                        localStorage.removeItem(`lastIndex_${currentChapter}`);
+                        startNewSession(currentChapter);
+                    });
+                    document.getElementById('back-to-menu-btn').addEventListener('click', openMenu);
+                }
     // 단어 분류 (아는 단어 / 모르는 단어)
     function handleClassification(status) {
         if (currentCardIndex < sessionWords.length) {
@@ -2554,17 +2561,8 @@
         chapterListEl.innerHTML = '';
         for (const chapterNum in allChapters) {
             const button = document.createElement('button');
-            const knownCount = (chapterStatuses[chapterNum] && Object.values(chapterStatuses[chapterNum]).filter(s => s === 'known').length) || 0;
-            const unknownCount = (chapterStatuses[chapterNum] && Object.values(chapterStatuses[chapterNum]).filter(s => s === 'unknown').length) || 0;
-            const totalCount = allChapters[chapterNum].length;
-
-            button.innerHTML = `
-                <span>Chapter ${chapterNum}</span>
-                <span class="text-sm text-slate-500">
-                    (${knownCount} / ${totalCount})
-                </span>
-            `;
-            button.className = `flex flex-col items-center justify-center p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition`;
+            button.textContent = `Chapter ${chapterNum}`;
+            button.className = `p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition`;
             button.addEventListener('click', () => startNewSession(parseInt(chapterNum)));
             chapterListEl.appendChild(button);
         }
