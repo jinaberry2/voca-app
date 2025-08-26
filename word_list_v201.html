@@ -1,4 +1,166 @@
-<script>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대화형 단어 카드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* 기본 폰트 설정 */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* 3D 플립 효과를 위한 원근감 설정 */
+        .perspective-1000 { perspective: 1000px; }
+        /* 플래시카드 내부 컨테이너 스타일 */
+        .flashcard-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s; /* 플립 애니메이션 */
+            transform-style: preserve-3d; /* 3D 효과 유지 */
+        }
+        /* 카드가 뒤집혔을 때의 스타일 */
+        .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+        /* 플래시카드 앞면과 뒷면 공통 스타일 */
+        .flashcard-front, .flashcard-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden; /* 뒷면 숨기기 (플립 시) */
+            backface-visibility: hidden; /* 표준 속성 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+            border-radius: 1rem;
+        }
+        /* 플래시카드 뒷면 스타일 (초기 상태에서 180도 회전) */
+        .flashcard-back { transform: rotateY(180deg); }
+        /* 모바일 탭 하이라이트 제거 */
+        * { -webkit-tap-highlight-color: transparent; }
+        /* 로딩 스피너 스타일 */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+        /* 스피너 애니메이션 키프레임 */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* 모달 오버레이 스타일 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        /* 모달 콘텐츠 스타일 */
+        .modal-content {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80%;
+            overflow-y: auto;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-md mx-auto">
+      <div class="flex justify-between items-center mb-6">
+  <button id="menu-btn" class="p-2 bg-slate-200 rounded-md text-sm font-semibold hover:bg-slate-300 transition">
+      챕터 선택
+  </button>
+  <h1 id="app-title" class="text-3xl font-bold text-center text-slate-800 flex-grow">AI 단어 카드</h1>
+  <a href="index.html" class="p-2 bg-slate-200 rounded-md text-sm font-semibold hover:bg-slate-300 transition">
+      홈으로
+  </a>
+</div>
+        <p id="chapter-title" class="text-center text-slate-600 mb-6">Chapter 1</p>
+
+        <!-- 메인 컨테이너 -->
+        <div id="main-container">
+            <!-- 플래시카드 뷰 -->
+            <div id="flashcard-view">
+                <div id="progress-indicator" class="text-center text-slate-500 mb-2 font-bold text-lg"></div>
+                <div class="perspective-1000">
+                    <div id="flashcard" class="flashcard w-full h-64 bg-white rounded-2xl shadow-lg cursor-pointer">
+                            <div class="flashcard-inner">
+                                <div id="card-front" class="flashcard-front bg-white text-slate-800">
+                                    <span id="card-front-text" class="text-4xl font-bold"></span>
+                                </div>
+                                <div id="card-back" class="flashcard-back bg-slate-800 text-white">
+                                    <span id="card-back-text" class="text-2xl font-semibold"></span>
+                                </div>
+                            </div>
+                    </div>
+                </div>
+                    <!-- 아는/모르는 단어 버튼 -->
+                <div id="classification-buttons" class="flex justify-center gap-4 mt-4">
+                    <button id="mark-unknown-btn" class="w-1/2 py-3 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 transition">🤔 모르는 단어</button>
+                    <button id="mark-known-btn" class="w-1/2 py-3 bg-teal-500 text-white font-semibold rounded-lg shadow-md hover:bg-teal-600 transition">😄 아는 단어</button>
+                </div>
+            </div>
+            <!-- 퀴즈 뷰 -->
+            <div id="quiz-view" class="hidden w-full h-auto bg-white rounded-2xl shadow-lg p-6"></div>
+            <!-- 완료 뷰 -->
+            <div id="completion-view" class="hidden w-full h-64 bg-white rounded-2xl shadow-lg p-8 text-center flex flex-col justify-center items-center">
+            </div>
+        </div>
+
+        <!-- 컨트롤 버튼 -->
+        <div id="controls" class="flex justify-between items-center mt-6">
+            <button id="prev-btn" class="px-6 py-3 bg-white text-slate-700 font-semibold rounded-lg shadow-md hover:bg-slate-200 transition disabled:opacity-50">이전</button>
+            <button id="next-btn" class="px-6 py-3 bg-white text-slate-700 font-semibold rounded-lg shadow-md hover:bg-slate-200 transition">다음</button>
+        </div>
+
+        <!-- AI 기능 & 기타 기능 -->
+        <div id="extra-features">
+            <div class="mt-6 p-4 border-t-2 border-slate-200">
+                    <div id="ai-buttons" class="flex justify-center gap-4">
+                        <button id="generate-example-btn" class="px-5 py-2 bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-blue-600">예문 만들기</button>
+                        <button id="generate-quiz-btn" class="px-5 py-2 bg-green-500 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-green-600">퀴즈 만들기</button>
+                    </div>
+            </div>
+            <div id="ai-content-container" class="mt-4 p-4 bg-white rounded-lg shadow-inner min-h-[80px]"></div>
+            <div class="flex justify-center gap-4 mt-4">
+                <button id="shuffle-btn" class="px-5 py-2 bg-white text-slate-600 text-sm font-semibold rounded-lg shadow-sm hover:bg-slate-200">카드 섞기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 챕터 선택 메뉴 모달 -->
+    <div id="chapter-menu-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold text-center mb-6">챕터 선택</h2>
+            <div id="chapter-list" class="grid grid-cols-4 gap-3">
+                <!-- 챕터 버튼들이 여기에 동적으로 생성됩니다. -->
+            </div>
+            <button id="close-menu-btn" class="absolute top-4 right-4 text-xl font-bold text-slate-500 hover:text-slate-700">&times;</button>
+        </div>
+    </div>
+
+    <script>
     // 파일에서 추출한 모든 단어 데이터
     const allChapters = {
         1: [
@@ -2101,11 +2263,13 @@
     }
 
     // 새로운 학습 세션 시작
+    // wordsToStudy: 챕터 번호 (number) 또는 단어 배열 (array)
     // isReview: 모르는 단어 복습 세션인지 여부
     function startNewSession(wordsToStudy, isReview = false) {
         // wordsToStudy가 챕터 번호일 경우
         if (typeof wordsToStudy === 'number') {
             currentChapter = wordsToStudy;
+            localStorage.setItem('lastChapter', currentChapter);
             const chapterData = allChapters[currentChapter];
             if (!chapterData) {
                 // 사용자에게 알림 메시지 표시
@@ -2122,7 +2286,7 @@
             loadWordStatus(); // 로컬 스토리지에서 기록 불러오기
             chapterTitleEl.textContent = `Chapter ${currentChapter}`;
         } else { // wordsToStudy가 단어 배열일 경우 (예: 모르는 단어 복습)
-            sessionWords = wordsToStudy.map(word => ({ ...word, status: 'unknown' }));
+            sessionWords = wordsToStudy.map(word => ({ ...word, status: 'unseen' }));
             if (isReview) {
                 chapterTitleEl.textContent = `모르는 단어 복습`;
             } else {
@@ -2150,7 +2314,11 @@
         cardBackTextEl.textContent = word.korean;
 
         flashcardEl.classList.remove('flipped'); // 새 카드 로드 시 앞면으로 설정
-        progressIndicatorEl.textContent = `${currentCardIndex + 1} / ${sessionWords.length}`;
+
+        // 진행 상황 표시를 업데이트된 단어 상태에 따라 정확하게 계산
+        const totalWords = sessionWords.length;
+        const classifiedWords = sessionWords.filter(w => w.status !== 'unseen').length;
+        progressIndicatorEl.textContent = `${classifiedWords + 1} / ${totalWords}`;
 
         prevBtn.disabled = currentCardIndex === 0; // 첫 카드일 때 이전 버튼 비활성화
         nextBtn.disabled = false; // 다음 버튼 활성화
@@ -2399,6 +2567,8 @@
     closeMenuBtn.addEventListener('click', closeMenu);
 
     // Initial load: 앱 시작 시 마지막으로 학습했던 챕터 또는 챕터 1 로드
-      const lastChapter = parseInt(localStorage.getItem('lastChapter')) || 1;
-      startNewSession(lastChapter);
+    const lastChapter = parseInt(localStorage.getItem('lastChapter')) || 1;
+    startNewSession(lastChapter);
 </script>
+</body>
+</html>
