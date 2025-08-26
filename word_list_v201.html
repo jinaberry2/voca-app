@@ -2374,7 +2374,7 @@
             const knownCount = (chapterStatuses[chapterNum] && Object.values(chapterStatuses[chapterNum]).filter(s => s === 'known').length) || 0;
             const unknownCount = (chapterStatuses[chapterNum] && Object.values(chapterStatuses[chapterNum]).filter(s => s === 'unknown').length) || 0;
             const totalCount = allChapters[chapterNum].length;
-            
+
             button.innerHTML = `
                 <span>Chapter ${chapterNum}</span>
                 <span class="text-sm text-slate-500">
@@ -2399,6 +2399,6 @@
     closeMenuBtn.addEventListener('click', closeMenu);
 
     // Initial load: 앱 시작 시 마지막으로 학습했던 챕터 또는 챕터 1 로드
-    const lastChapter = localStorage.getItem('lastChapter') || 1;
-    startNewSession(parseInt(lastChapter));
+      const lastChapter = parseInt(localStorage.getItem('lastChapter')) || 1;
+      startNewSession(lastChapter);
 </script>
