@@ -2375,111 +2375,105 @@
 
         // Gemini API 호출
         async function callGemini(prompt, schema) {
+            // API 키는 이 캔버스 환경에서만 작동하므로,
+            // 실제 환경에서는 유효한 키를 사용해야 합니다.
             const apiKey = "AIzaSyCC69XzzhIPCqqsp-wNfsBxVX3S5CYZNh8";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
             const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
+
+            // 이 부분은 캔버스 환경에서 정상 작동하도록 재구성한 코드입니다.
+            // 실제 배포 시에는 유효한 키와 함께 원래의 fetch 코드를 사용해야 합니다.
+            const tempUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent';
+
             try {
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (!response.ok) throw new Error(`API 요청 실패: ${response.status}`);
-                const result = await response.json();
-                if (result.candidates && result.candidates.length > 0) {
-                    const text = result.candidates[0].content.parts[0].text;
-                    // API가 반환하는 JSON 문자열을 파싱
-                    const parsedJson = JSON.parse(text);
-                    return parsedJson;
+                const response = await fetch(`${tempUrl}?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API 요청 실패: ${response.status}`);
                 }
-                else throw new Error("API로부터 유효한 응답을 받지 못했습니다.");
+
+                const result = await response.json();
+                const text = result.candidates[0].content.parts[0].text;
+                const parsedJson = JSON.parse(text);
+
+                return parsedJson;
+
             } catch (error) {
                 console.error("Gemini API 호출 오류:", error);
-                aiContentContainerEl.innerHTML = `<p class="text-red-500 text-center">오류: ${error.message}</p>`;
                 return null;
             }
         }
 
         // 예문 생성
-  async function generateExample() {
-      if (currentCardIndex >= sessionWords.length) return;
-      showLoading(aiContentContainerEl);
-      const word = sessionWords[currentCardIndex].english;
-      const prompt = `Please create a simple and clear example sentence for the word "${word}". Also, provide the Korean translation for that sentence. Your response must be in a valid JSON format.`;
-      const schema = { type: "OBJECT", properties: { englishSentence: { type: "STRING" }, koreanTranslation: { type: "STRING" } }, required: ["englishSentence", "koreanTranslation"] };
+        async function generateExample() {
+            if (currentCardIndex >= sessionWords.length) return;
+            showLoading(aiContentContainerEl);
+            const word = sessionWords[currentCardIndex].english;
+            const prompt = `Please create a simple and clear example sentence for the word "${word}". Also, provide the Korean translation for that sentence. Your response must be in a valid JSON format.`;
+            const schema = { type: "OBJECT", properties: { englishSentence: { type: "STRING" }, koreanTranslation: { type: "STRING" } }, required: ["englishSentence", "koreanTranslation"] };
 
-      // API 호출 로직을 재구성하여 API 키가 없어도 작동하도록 수정
-      let data;
-      try {
-          const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=", {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } })
-          });
-          if (!response.ok) throw new Error(`API 요청 실패: ${response.status}`);
-          const result = await response.json();
-          const text = result.candidates[0].content.parts[0].text;
-          data = JSON.parse(text);
-      } catch (error) {
-          console.error("Gemini API 호출 오류:", error);
-          aiContentContainerEl.innerHTML = `<p class="text-red-500 text-center">오류: ${error.message}</p>`;
-          return;
-      }
+            const data = await callGemini(prompt, schema);
 
-      if (data) aiContentContainerEl.innerHTML = `<p class="font-semibold text-slate-700">${data.englishSentence}</p><p class="text-sm text-slate-500 mt-1">${data.koreanTranslation}</p>`;
-  }
+            if (data) {
+                aiContentContainerEl.innerHTML = `<p class="font-semibold text-slate-700">${data.englishSentence}</p><p class="text-sm text-slate-500 mt-1">${data.koreanTranslation}</p>`;
+            } else {
+                aiContentContainerEl.innerHTML = `<p class="text-red-500 text-center">예문 생성 실패. 다시 시도해주세요.</p>`;
+            }
+        }
 
-  // 퀴즈 생성 (유의어/반의어)
-  async function generateQuiz() {
-      if (currentCardIndex >= sessionWords.length) return;
-      switchToView('quiz-view');
-      showLoading(quizViewEl);
-      const word = sessionWords[currentCardIndex];
-      const allWordsString = Object.values(allChapters).flat().map(w => w.english).join(', ');
+        // 퀴즈 생성 (유의어/반의어)
+        async function generateQuiz() {
+            if (currentCardIndex >= sessionWords.length) return;
+            switchToView('quiz-view');
+            showLoading(quizViewEl);
+            const word = sessionWords[currentCardIndex];
+            const allWordsString = Object.values(allChapters).flat().map(w => w.english).join(', ');
 
-      const prompt = `For the English word "${word.english}" which means "${word.korean}", generate a multiple-choice question in Korean asking to identify a synonym. Provide one English synonym for "${word.english}" as the correct answer. For the three distractors, choose English words from the following list that are antonyms or have a contrasting nuance to "${word.english}".
+            const prompt = `For the English word "${word.english}", generate a multiple-choice question in Korean asking to identify a synonym. Provide one English synonym for "${word.english}" as the correct answer. For the three distractors, choose English words from the following list that are antonyms or have a contrasting nuance to "${word.english}". If suitable antonyms are not available in the list, you may generate other plausible English antonyms.
 
-      Word list for distractors: ${allWordsString}
+            Word list for distractors: ${allWordsString}
 
-      Your response must be in a valid JSON format with the keys: 'question' (Korean string), 'synonym' (English string), and 'antonyms' (array of 3 English strings).`;
+            Your response must be in a valid JSON format with the keys: 'question' (Korean string), 'synonym' (English string), and 'antonyms' (array of 3 English strings).`;
 
-      let data;
-      try {
-          const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=", {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: { type: "OBJECT", properties: { question: { type: "STRING" }, synonym: { type: "STRING" }, antonyms: { type: "ARRAY", items: { type: "STRING" }, minItems: 3, maxItems: 3 } }, required: ["question", "synonym", "antonyms"] } } })
-          });
-          if (!response.ok) throw new Error(`API 요청 실패: ${response.status}`);
-          const result = await response.json();
-          const text = result.candidates[0].content.parts[0].text;
-          data = JSON.parse(text);
-      } catch (error) {
-          console.error("Gemini API 호출 오류:", error);
-          quizViewEl.innerHTML = `<p class="text-red-500 text-center">오류: ${error.message}</p><button id="back-to-cards-btn" class="mt-4 w-full p-2 bg-slate-600 text-white rounded-lg">돌아가기</button>`;
-          document.getElementById('back-to-cards-btn').addEventListener('click', () => {
-              switchToView('flashcard-view');
-              updateCard();
-          });
-          return;
-      }
+            const data = await callGemini(prompt, {
+                type: "OBJECT",
+                properties: {
+                    question: { type: "STRING" },
+                    synonym: { type: "STRING" },
+                    antonyms: {
+                        type: "ARRAY",
+                        items: { type: "STRING" },
+                        minItems: 3,
+                        maxItems: 3
+                    }
+                },
+                required: ["question", "synonym", "antonyms"]
+            });
 
-      if (data && data.synonym && data.antonyms && data.antonyms.length === 3) {
-          const allOptions = [data.synonym, ...data.antonyms];
-          const shuffledOptions = allOptions.sort(() => Math.random() - 0.5);
+            if (data && data.synonym && data.antonyms && data.antonyms.length === 3) {
+                const allOptions = [data.synonym, ...data.antonyms];
+                const shuffledOptions = allOptions.sort(() => Math.random() - 0.5);
 
-          quizViewEl.innerHTML = `
-              <p class="text-lg font-semibold text-center mb-4">${data.question}</p>
-              <div class="grid grid-cols-1 gap-3">
-                  ${shuffledOptions.map(o => `<button class="option-btn w-full p-3 bg-slate-100 rounded-lg hover:bg-slate-200 transition">${o}</button>`).join('')}
-              </div>
-              <div id="quiz-feedback" class="text-center mt-4 font-bold"></div>
-          `;
-          document.querySelectorAll('.option-btn').forEach(btn => btn.addEventListener('click', (e) => checkAnswer(e.target.textContent.trim(), data.synonym)));
-      } else {
-          quizViewEl.innerHTML = `<p class="text-red-500 text-center">퀴즈 생성 실패. 다시 시도해주세요.</p><button id="back-to-cards-btn" class="mt-4 w-full p-2 bg-slate-600 text-white rounded-lg">돌아가기</button>`;
-          document.getElementById('back-to-cards-btn').addEventListener('click', () => {
-              switchToView('flashcard-view');
-              updateCard();
-          });
-      }
-  }
+                quizViewEl.innerHTML = `
+                    <p class="text-lg font-semibold text-center mb-4">${data.question}</p>
+                    <div class="grid grid-cols-1 gap-3">
+                        ${shuffledOptions.map(o => `<button class="option-btn w-full p-3 bg-slate-100 rounded-lg hover:bg-slate-200 transition">${o}</button>`).join('')}
+                    </div>
+                    <div id="quiz-feedback" class="text-center mt-4 font-bold"></div>
+                `;
+                document.querySelectorAll('.option-btn').forEach(btn => btn.addEventListener('click', (e) => checkAnswer(e.target.textContent.trim(), data.synonym)));
+            } else {
+                quizViewEl.innerHTML = `<p class="text-red-500 text-center">퀴즈 생성 실패. 다시 시도해주세요.</p><button id="back-to-cards-btn" class="mt-4 w-full p-2 bg-slate-600 text-white rounded-lg">돌아가기</button>`;
+                document.getElementById('back-to-cards-btn').addEventListener('click', () => {
+                    switchToView('flashcard-view');
+                    updateCard();
+                });
+            }
+        }
 
         // 퀴즈 정답 확인
         function checkAnswer(selected, correct) {
