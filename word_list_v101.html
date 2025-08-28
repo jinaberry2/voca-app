@@ -1,0 +1,2454 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대화형 단어 카드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* 기본 폰트 설정 */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* 3D 플립 효과를 위한 원근감 설정 */
+        .perspective-1000 { perspective: 1000px; }
+        /* 플래시카드 내부 컨테이너 스타일 */
+        .flashcard-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s; /* 플립 애니메이션 */
+            transform-style: preserve-3d; /* 3D 효과 유지 */
+        }
+        /* 카드가 뒤집혔을 때의 스타일 */
+        .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+        /* 플래시카드 앞면과 뒷면 공통 스타일 */
+        .flashcard-front, .flashcard-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden; /* 뒷면 숨기기 (플립 시) */
+            backface-backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+            border-radius: 1rem;
+        }
+        /* 플래시카드 뒷면 스타일 (초기 상태에서 180도 회전) */
+        .flashcard-back { transform: rotateY(180deg); }
+        /* 모바일 탭 하이라이트 제거 */
+        * { -webkit-tap-highlight-color: transparent; }
+        /* 로딩 스피너 스타일 */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+        /* 스피너 애니메이션 키프레임 */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* 모달 오버레이 스타일 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        /* 모달 콘텐츠 스타일 */
+        .modal-content {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80%;
+            overflow-y: auto;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-md mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <button id="menu-btn" class="p-2 bg-slate-200 rounded-md text-sm font-semibold hover:bg-slate-300 transition">
+                메뉴
+            </button>
+            <h1 id="app-title" class="text-3xl font-bold text-center text-slate-800 flex-grow">AI 단어 카드 퀴즈</h1>
+        </div>
+        <p id="chapter-title" class="text-center text-slate-600 mb-6">Chapter 1</p>
+
+        <!-- 메인 컨테이너 -->
+        <div id="main-container">
+            <!-- 플래시카드 뷰 -->
+            <div id="flashcard-view">
+                <div id="progress-indicator" class="text-center text-slate-500 mb-2 font-bold text-lg"></div>
+                <div class="perspective-1000">
+                    <div id="flashcard" class="flashcard w-full h-64 bg-white rounded-2xl shadow-lg cursor-pointer">
+                           <div class="flashcard-inner">
+                               <div id="card-front" class="flashcard-front bg-white text-slate-800">
+                                   <span id="card-front-text" class="text-4xl font-bold"></span>
+                               </div>
+                               <div id="card-back" class="flashcard-back bg-slate-800 text-white">
+                                   <span id="card-back-text" class="text-2xl font-semibold"></span>
+                               </div>
+                           </div>
+                    </div>
+                </div>
+                    <!-- 아는/모르는 단어 버튼 -->
+                <div id="classification-buttons" class="flex justify-center gap-4 mt-4">
+                    <button id="mark-unknown-btn" class="w-1/2 py-3 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 transition">🤔 모르는 단어</button>
+                    <button id="mark-known-btn" class="w-1/2 py-3 bg-teal-500 text-white font-semibold rounded-lg shadow-md hover:bg-teal-600 transition">😄 아는 단어</button>
+                </div>
+            </div>
+            <!-- 퀴즈 뷰 -->
+            <div id="quiz-view" class="hidden w-full h-auto bg-white rounded-2xl shadow-lg p-6"></div>
+            <!-- 완료 뷰 -->
+            <div id="completion-view" class="hidden w-full h-64 bg-white rounded-2xl shadow-lg p-8 text-center flex flex-col justify-center items-center">
+            </div>
+        </div>
+
+        <!-- 컨트롤 버튼 -->
+        <div id="controls" class="flex justify-between items-center mt-6">
+            <button id="prev-btn" class="px-6 py-3 bg-white text-slate-700 font-semibold rounded-lg shadow-md hover:bg-slate-200 transition disabled:opacity-50">이전</button>
+            <button id="next-btn" class="px-6 py-3 bg-white text-slate-700 font-semibold rounded-lg shadow-md hover:bg-slate-200 transition">다음</button>
+        </div>
+
+        <!-- AI 기능 & 기타 기능 -->
+        <div id="extra-features">
+            <div class="mt-6 p-4 border-t-2 border-slate-200">
+                 <div id="ai-buttons" class="flex justify-center gap-4">
+                    <button id="generate-example-btn" class="px-5 py-2 bg-blue-500 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-blue-600">예문 만들기</button>
+                    <button id="generate-quiz-btn" class="px-5 py-2 bg-green-500 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-green-600">퀴즈 만들기</button>
+                </div>
+            </div>
+            <div id="ai-content-container" class="mt-4 p-4 bg-white rounded-lg shadow-inner min-h-[80px]"></div>
+            <div class="flex justify-center gap-4 mt-4">
+                <button id="shuffle-btn" class="px-5 py-2 bg-white text-slate-600 text-sm font-semibold rounded-lg shadow-sm hover:bg-slate-200">카드 섞기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 챕터 선택 메뉴 모달 -->
+    <div id="chapter-menu-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold text-center mb-6">챕터 선택</h2>
+            <div id="chapter-list" class="grid grid-cols-4 gap-3">
+                <!-- 챕터 버튼들이 여기에 동적으로 생성됩니다. -->
+            </div>
+            <button id="close-menu-btn" class="absolute top-4 right-4 text-xl font-bold text-slate-500 hover:text-slate-700">&times;</button>
+        </div>
+    </div>
+
+    <script>
+        // Chapter 1부터 20까지의 단어 목록
+        const allChapters = {
+            1: [
+                { english: "boiler plate", korean: "진부한 표현" },
+                { english: "roughly", korean: "대략" },
+                { english: "capricious", korean: "변덕스러운" },
+                { english: "abide by", korean: "준수하다" },
+                { english: "teem with", korean: "가득 차다" },
+                { english: "circumscribe", korean: "제한하다" },
+                { english: "docile", korean: "고분고분한" },
+                { english: "tenure", korean: "임기: 정년보장" },
+                { english: "jeopardize", korean: "위험에 빠뜨리다" },
+                { english: "knickknack", korean: "잡다한 장신구" },
+                { english: "mind-boggling", korean: "놀라운" },
+                { english: "wrangle", korean: "언쟁" },
+                { english: "voucher", korean: "교환권 (바우처)" },
+                { english: "watertight", korean: "빈틈없는" },
+                { english: "abhorrent", korean: "혐오감을 주는" },
+                { english: "wrap up", korean: "마무리 짓다" },
+                { english: "a wide range of", korean: "다양한" },
+                { english: "windfall", korean: "뜻밖의 횡재" },
+                { english: "abolitionist", korean: "폐지론자" },
+                { english: "underlie", korean: "기초를 이루다" },
+                { english: "chastise", korean: "비난하다" },
+                { english: "underscore", korean: "강조하다" },
+                { english: "accentuate", korean: "강조하다" },
+                { english: "vie", korean: "얻으려고 다투다" },
+                { english: "vindicate", korean: "정당함을 입증하다" },
+                { english: "aggravate", korean: "악화시키다" },
+                { english: "vitality", korean: "활기" },
+                { english: "backdrop", korean: "배경" },
+                { english: "attraction", korean: "관광명소; 매력" },
+                { english: "vouch", korean: "보증하다" },
+                { english: "boast", korean: "자랑하다" },
+                { english: "callow", korean: "미숙한" },
+                { english: "calumny", korean: "비방" },
+                { english: "underling", korean: "부하" },
+                { english: "capitalize (on)", korean: "이용하다" },
+                { english: "abominate", korean: "혐오하다" },
+                { english: "put A at ease", korean: "A를 편하게 만들다" },
+                { english: "sack", korean: "해고하다" },
+                { english: "tailspin", korean: "불경기: 급하강: 혼란(기)" },
+                { english: "stationary", korean: "정적인" },
+                { english: "tantalize", korean: "애타게 하다" },
+                { english: "cease-fire", korean: "휴전(하다)" },
+                { english: "massacre", korean: "대량학살(하다)" },
+                { english: "clamp down on", korean: "단속하다" },
+                { english: "absolve", korean: "용서하다" },
+                { english: "to boot", korean: "게다가" },
+                { english: "baneful", korean: "파괴적인" },
+                { english: "thwart", korean: "좌절시키다" },
+                { english: "brag", korean: "자랑하다" },
+                { english: "abstention", korean: "절제" },
+                { english: "bulwark", korean: "성벽" },
+                { english: "work out", korean: "해결되다: 운동하다" },
+                { english: "wring", korean: "착취하다" },
+                { english: "companion", korean: "동반자" },
+                { english: "wreck", korean: "난파; 파괴하다" },
+                { english: "crack down on", korean: "단속하다" },
+                { english: "dazzling", korean: "눈부신" },
+                { english: "anarchy", korean: "무정부상태" },
+                { english: "debilitate", korean: "쇠약하게하다" },
+                { english: "an estimated", korean: "약" },
+                { english: "decimate", korean: "학살하다" },
+                { english: "cryptography", korean: "암호(해독)학" },
+                { english: "delve into", korean: "탐구하다" },
+                { english: "aide", korean: "측근" },
+                { english: "circular", korean: "원형의" },
+                { english: "undergird", korean: "뒷받침하다" },
+                { english: "claque", korean: "(아첨 떠는) 무리" },
+                { english: "deposition", korean: "파면; 증언(선서)" },
+                { english: "adage", korean: "격언" },
+                { english: "viable", korean: "생존가능성이 있는" },
+                { english: "dissident", korean: "반대하는 반체제인사" },
+                { english: "beget", korean: "유발하다" },
+                { english: "practice", korean: "이행하다" },
+                { english: "bewilder", korean: "당황시키다" },
+                { english: "profound", korean: "심오한" },
+                { english: "tractable", korean: "다루기 쉬운" },
+                { english: "unbiased", korean: "편견 없는" },
+                { english: "tranquil", korean: "평온한" },
+                { english: "undercut", korean: "경쟁자보다 싸게 팔다" },
+                { english: "chagrin", korean: "분노하게 만들다" },
+                { english: "undo", korean: "원상태로 되돌리다" },
+                { english: "collapse", korean: "붕괴(하다)" },
+                { english: "unrest", korean: "소동" },
+                { english: "vaunted", korean: "자랑거리인" },
+                { english: "scramble", korean: "뒤섞다: 급히 움직이다" },
+                { english: "bailout", korean: "구제금융" },
+                { english: "upheaval", korean: "대변동" },
+                { english: "backlash", korean: "반대하다" },
+                { english: "zest", korean: "열정; 풍미" },
+                { english: "acquiesce", korean: "묵인하다" },
+                { english: "zoom in on", korean: "집중하다" },
+                { english: "abolish", korean: "폐지하다" },
+                { english: "cognizant", korean: "인식하는" },
+                { english: "underline", korean: "강조하다" },
+                { english: "abiding", korean: "지속적인" }
+            ],
+            2: [
+                { english: "vehement", korean: "격렬한" },
+                { english: "ameliorate", korean: "개선하다: 개량하다" },
+                { english: "wily", korean: "교활한" },
+                { english: "vindictive", korean: "원한을 품은" },
+                { english: "amity", korean: "친선" },
+                { english: "archrival", korean: "숙적(宿敵)" },
+                { english: "foster", korean: "육성하다" },
+                { english: "speculate", korean: "추측하다" },
+                { english: "warrant", korean: "보증하다" },
+                { english: "staggering", korean: "엄청난" },
+                { english: "wary", korean: "경계하는" },
+                { english: "hypothesize", korean: "가설을 내세우다" },
+                { english: "intrigue", korean: "흥미를 유발하다" },
+                { english: "awry", korean: "뒤틀린" },
+                { english: "verbose", korean: "말이 많은" },
+                { english: "advocate", korean: "옹호하다" },
+                { english: "vicarious", korean: "대리(만족)의" },
+                { english: "baron", korean: "거물급 인사: 남작(男爵)" },
+                { english: "coincidence", korean: "우연" },
+                { english: "bilateral", korean: "양자 간의 양면의" },
+                { english: "vituperative", korean: "욕하는" },
+                { english: "beseech", korean: "간청하다" },
+                { english: "warlike", korean: "호전적인" },
+                { english: "blunt", korean: "무딘" },
+                { english: "allay", korean: "완화시키다" },
+                { english: "buttress", korean: "지지하다" },
+                { english: "alleviate", korean: "완화하다" },
+                { english: "circumspect", korean: "조심성 있는" },
+                { english: "by the same token", korean: "동일한 논리로" },
+                { english: "cling", korean: "집착하다" },
+                { english: "byzantine", korean: "복잡한" },
+                { english: "death toll", korean: "사망자 수" },
+                { english: "bust", korean: "불황" },
+                { english: "reticent", korean: "과묵한" },
+                { english: "concoct", korean: "날조하다" },
+                { english: "mortal", korean: "죽음의" },
+                { english: "tumor", korean: "종양" },
+                { english: "ritual", korean: "의식, 의례" },
+                { english: "browse", korean: "이것저것 구경하다" },
+                { english: "scribe", korean: "필기사, 서기" },
+                { english: "turmoil", korean: "혼란" },
+                { english: "typeface", korean: "활자체" },
+                { english: "toll", korean: "요금, 희생" },
+                { english: "customs", korean: "관세, 세관" },
+                { english: "stately", korean: "당당한" },
+                { english: "debris", korean: "잔해, 파편" },
+                { english: "undercover", korean: "비밀의" },
+                { english: "vanguard", korean: "선구자" },
+                { english: "depict", korean: "묘사하다" },
+                { english: "nicety", korean: "미묘한 점" },
+                { english: "desired result", korean: "소기의 성과" },
+                { english: "anorexia", korean: "거식증" },
+                { english: "deteriorate", korean: "악화시키다" },
+                { english: "ambiguous", korean: "모호한" },
+                { english: "trounce", korean: "참패시키다" },
+                { english: "upcoming", korean: "임박한" },
+                { english: "truce", korean: "휴전" },
+                { english: "veracious", korean: "진실한" },
+                { english: "calligraphy", korean: "예쁜 글씨체" },
+                { english: "vigilant", korean: "경계하는" },
+                { english: "capital punishment", korean: "사형제" },
+                { english: "boloney", korean: "헛소리" },
+                { english: "sustain injury", korean: "부상을 입다" },
+                { english: "bolster", korean: "지지하다" },
+                { english: "brisk", korean: "활기찬" },
+                { english: "disgruntle", korean: "불만을 품게 하다" },
+                { english: "embryonic", korean: "초기의; 배아(胚芽)의" },
+                { english: "dictum", korean: "격언" },
+                { english: "exaggerate", korean: "과장하다" },
+                { english: "fortuitous", korean: "우연한" },
+                { english: "morale", korean: "사기(士氣), 의욕" },
+                { english: "omen", korean: "불길한 징후" },
+                { english: "perceptive", korean: "지각력이 있는" },
+                { english: "subsidize", korean: "보조금을 지급하다" },
+                { english: "ultimatum", korean: "최후통첩" },
+                { english: "virile", korean: "남성다운" },
+                { english: "collateral", korean: "담보물(擔保物); 부수적인" },
+                { english: "unassuming", korean: "겸손한" },
+                { english: "commute", korean: "통근하다" },
+                { english: "unilateral", korean: "일방적" },
+                { english: "decommission", korean: "직권해제하다" },
+                { english: "augment", korean: "보강하다: 증강하다" },
+                { english: "delinquency", korean: "태만" },
+                { english: "autopsy", korean: "부검" },
+                { english: "unison", korean: "조화; 제창(齊唱)" },
+                { english: "declare", korean: "세관에 신고하다 선포하다" },
+                { english: "unyielding", korean: "완고한" },
+                { english: "wrenching", korean: "정신적 괴롭히는" },
+                { english: "universal", korean: "보편적인" },
+                { english: "coterie", korean: "한패" },
+                { english: "volition", korean: "의지력" },
+                { english: "upbeat", korean: "낙천적인" },
+                { english: "apprise", korean: "통보하다. 알리다" },
+                { english: "appraise", korean: "값을 매기다. 평가하다" },
+                { english: "anemia", korean: "빈혈" },
+                { english: "amnesia", korean: "기억상실증" },
+                { english: "congenial", korean: "붙임성이 좋은" },
+                { english: "appropriate", korean: "착복하다" },
+                { english: "misappropriate", korean: "착복하다" },
+                { english: "횡령", korean: "횡령" },
+                { english: "congenital", korean: "선천적인" }
+            ],
+            3: [
+                { english: "head-on", korean: "정면으로" },
+                { english: "elixir", korean: "만병통치약" },
+                { english: "relinquish", korean: "포기하다: 물려주다" },
+                { english: "aboriginal", korean: "원주민의" },
+                { english: "esoteric", korean: "비법의" },
+                { english: "reimburse", korean: "배상하다" },
+                { english: "discrepancy", korean: "차이" },
+                { english: "eligible", korean: "자격을 갖춘" },
+                { english: "repeal", korean: "폐지하다" },
+                { english: "treat", korean: "간식거리" },
+                { english: "epicenter", korean: "진원, 진앙(震央)" },
+                { english: "in high regard", korean: "높게 평가하는" },
+                { english: "bicker", korean: "말다툼하다" },
+                { english: "foreshadow", korean: "전조가 되다" },
+                { english: "mummy", korean: "미라" },
+                { english: "erratic", korean: "산만한" },
+                { english: "nibble", korean: "조금씩 갉아 먹다" },
+                { english: "osteoporosis", korean: "골다공증(骨多孔症)" },
+                { english: "prolong", korean: "연장하다" },
+                { english: "suffocate", korean: "질식시키다" },
+                { english: "sprawl", korean: "뻗어나가다" },
+                { english: "unabridged", korean: "축약하지 않은" },
+                { english: "bereave A of B", korean: "A에게서 B를 뺏다" },
+                { english: "repugnant", korean: "불쾌한" },
+                { english: "upbraid", korean: "비난하다" },
+                { english: "bellicose", korean: "호전적인" },
+                { english: "plague", korean: "역병" },
+                { english: "resort to A", korean: "A에 의존하다" },
+                { english: "not so much A as B", korean: "A라기 보다는 B" },
+                { english: "dementia", korean: "정신질환" },
+                { english: "obesity", korean: "비만" },
+                { english: "bigotry", korean: "편협" },
+                { english: "puritan", korean: "청교도의: 청빈한" },
+                { english: "cardinal", korean: "주요한" },
+                { english: "reap", korean: "획득하다" },
+                { english: "reinvigorate", korean: "활기를 되찾게 하다" },
+                { english: "all but", korean: "거의 (almost)" },
+                { english: "underpin", korean: "지지하다" },
+                { english: "reconcile", korean: "화해시키다" },
+                { english: "immortal", korean: "불멸의" },
+                { english: "stride", korean: "큰 발달" },
+                { english: "afflict", korean: "괴롭히다" },
+                { english: "befall", korean: "일어나다" },
+                { english: "surmise", korean: "추측하다" },
+                { english: "totter", korean: "비틀거리다" },
+                { english: "trample", korean: "짓밟다" },
+                { english: "befitting", korean: "잘 맞는" },
+                { english: "refit", korean: "수리하다" },
+                { english: "vent", korean: "분출하다" },
+                { english: "reproach", korean: "질책하다" },
+                { english: "bandwagon", korean: "유행" },
+                { english: "scathing", korean: "신랄한" },
+                { english: "big name", korean: "거물급 인사" },
+                { english: "refute", korean: "반박하다" },
+                { english: "catapult", korean: "투석기; 던지다" },
+                { english: "employ", korean: "이용하다" },
+                { english: "decoy", korean: "유인하다" },
+                { english: "upstage", korean: "도도한; 인기를 가로채다" },
+                { english: "venal", korean: "돈에 매수되는" },
+                { english: "enigmatic", korean: "수수께끼의" },
+                { english: "counterpart", korean: "(같은 지위의) 상대방" },
+                { english: "retrieve", korean: "회수하다" },
+                { english: "scoff", korean: "비웃다" },
+                { english: "despicable", korean: "비열한" },
+                { english: "wrongful", korean: "부정한" },
+                { english: "rowdy", korean: "떠들썩한" },
+                { english: "reinstate", korean: "복귀시키다" },
+                { english: "deign", korean: "황송하게도 해주시다" },
+                { english: "revere", korean: "존경하다" },
+                { english: "scupper", korean: "망치다" },
+                { english: "recapitulate", korean: "요점을 되풀이하다" },
+                { english: "belated", korean: "뒤늦은" },
+                { english: "red tape", korean: "관료주의" },
+                { english: "censure", korean: "비난하다" },
+                { english: "second", korean: "후원하다" },
+                { english: "beguile", korean: "속이다" },
+                { english: "substantial", korean: "상당한" },
+                { english: "remarkable", korean: "상당한" },
+                { english: "significant", korean: "상당한" },
+                { english: "recoup", korean: "(손해를) 되찾다 만회하다" },
+                { english: "berate", korean: "비난하다" },
+                { english: "A is the case", korean: "A가 사실이다" },
+                { english: "backfire", korean: "역효과가 나다" },
+                { english: "shove", korean: "난폭하게 밀다" },
+                { english: "sign language", korean: "수화(受話), 수어(手語)" },
+                { english: "elate", korean: "고무하다" },
+                { english: "fanatic", korean: "열광자" },
+                { english: "slash", korean: "대폭 줄이다" },
+                { english: "down-to-earth", korean: "현실적인, 세속적인" },
+                { english: "foil", korean: "좌절시키다" },
+                { english: "discard", korean: "버리다" },
+                { english: "resurrection", korean: "부활" },
+                { english: "denounce", korean: "비난하다" },
+                { english: "strain", korean: "종류" },
+                { english: "desperado", korean: "무법자" },
+                { english: "trumpet", korean: "떠들썩하게 알리다" },
+                { english: "suspect ~", korean: "~라고 생각하다" },
+                { english: "doubt ~", korean: "~라고 생각하지 않다" },
+                { english: "confiscate", korean: "몰수하다" },
+                { english: "forfeit", korean: "몰수당하다" }
+            ],
+            4: [
+                { english: "waffle", korean: "시시한 말" },
+                { english: "boil down to", korean: "귀결되다" },
+                { english: "setback", korean: "실패 후퇴: 차질" },
+                { english: "extraneous", korean: "이질적인" },
+                { english: "resilient", korean: "복원력 있는, 강인한" },
+                { english: "stranded", korean: "길을 잃은" },
+                { english: "cookie-cutter", korean: "진부한" },
+                { english: "boon", korean: "큰 은혜" },
+                { english: "staunch", korean: "철저히 견고한" },
+                { english: "epitomize", korean: "요약하다" },
+                { english: "acupuncture", korean: "침(針)" },
+                { english: "clear-cut", korean: "선명한" },
+                { english: "deficiency", korean: "부족" },
+                { english: "adamant", korean: "단호한" },
+                { english: "exempt", korean: "면제하다" },
+                { english: "coddle", korean: "버릇없이 기르다" },
+                { english: "address", korean: "해결하다. 다루다" },
+                { english: "detente", korean: "긴장완화" },
+                { english: "encounter", korean: "만나다" },
+                { english: "at stake", korean: "위험한" },
+                { english: "bananas", korean: "열광적인" },
+                { english: "tumble", korean: "폭락하다" },
+                { english: "depression", korean: "하락한 부분" },
+                { english: "egalitarian", korean: "평등주의의 평등주의자" },
+                { english: "cuddle", korean: "꼭 껴안다" },
+                { english: "vility", korean: "비방하다" },
+                { english: "neuromuscular", korean: "신경골격의" },
+                { english: "though", korean: "그러나" },
+                { english: "bog down", korean: "수렁에 빠지다" },
+                { english: "tipsy", korean: "취해서 비틀거리는" },
+                { english: "solitude", korean: "고독" },
+                { english: "brainwash", korean: "세뇌하다" },
+                { english: "conjure up", korean: "(마술 등으로) 만들어내다" },
+                { english: "subsidiary", korean: "보조적인" },
+                { english: "cantankerous", korean: "심술궂은" },
+                { english: "buzzword", korean: "전문용어 유행하는 용어" },
+                { english: "enzyme", korean: "효소" },
+                { english: "dent", korean: "눌러 들어간 자국" },
+                { english: "pinnacle", korean: "정상(頂上); 정점(頂點)" },
+                { english: "by accident", korean: "우연히" },
+                { english: "surly", korean: "퉁명스러운" },
+                { english: "torpid", korean: "둔감한, 마비된" },
+                { english: "capitulate", korean: "항복하다" },
+                { english: "deprive A of B", korean: "A에게서 B를 없애다" },
+                { english: "spoil", korean: "버릇없이 키우다 썩다" },
+                { english: "carcinogen", korean: "발암물질" },
+                { english: "tremor", korean: "진동" },
+                { english: "specious", korean: "허울만 그럴듯한" },
+                { english: "rigor", korean: "엄격함" },
+                { english: "delineate", korean: "묘사하다" },
+                { english: "carnage", korean: "대학살" },
+                { english: "property", korean: "재산; 특징" },
+                { english: "snatch", korean: "낚아채다" },
+                { english: "deliberate", korean: "고의적인: 심사숙고하다" },
+                { english: "cocoon", korean: "보호막: (누에의) 고치" },
+                { english: "stoke", korean: "화로에 석탄을 넣다 부추기다" },
+                { english: "nadir", korean: "최저, 바닥: 절망(상태)" },
+                { english: "oblivious", korean: "망각한" },
+                { english: "shrewd", korean: "영리한" },
+                { english: "combative", korean: "전투적인" },
+                { english: "detach", korean: "분리하다" },
+                { english: "spinal column", korean: "척추" },
+                { english: "temper", korean: "완화하다" },
+                { english: "plethora", korean: "과다(過多), 과잉" },
+                { english: "commemorate", korean: "기념하다" },
+                { english: "stigma", korean: "오점: 낙인" },
+                { english: "fraught", korean: "가득 찬" },
+                { english: "tranquilize", korean: "고요하게 만들다" },
+                { english: "conciliatory", korean: "회유하는" },
+                { english: "demoralize", korean: "사기를 꺾다" },
+                { english: "constitute", korean: "구성하다: 설명하다" },
+                { english: "transient", korean: "일시적인" },
+                { english: "contradict", korean: "부정하다: 반박하다" },
+                { english: "sue", korean: "고소하다" },
+                { english: "cope with", korean: "해결하다. 다루다" },
+                { english: "incorrigible", korean: "고질적인, 고칠 수 없는" },
+                { english: "squalid", korean: "더러운" },
+                { english: "devastating", korean: "압도적인" },
+                { english: "cronyism", korean: "연고주의(緣故主義)" },
+                { english: "secure", korean: "확보하다 안전하게 만들다" },
+                { english: "envoy", korean: "특사" },
+                { english: "feat", korean: "업적" },
+                { english: "seasoned", korean: "경험이 많은" },
+                { english: "soothe", korean: "부드럽게 만들다: 달래다" },
+                { english: "astonish", korean: "놀라게 만들다" },
+                { english: "eradicate", korean: "근절하다" },
+                { english: "glut", korean: "과잉(공급)" },
+                { english: "lesion", korean: "상처, 찰과상" },
+                { english: "sophisticated", korean: "정교한" },
+                { english: "teeming", korean: "북적대는" },
+                { english: "spurious", korean: "가짜의" },
+                { english: "formidable", korean: "가공(可恐)할만한" },
+                { english: "teeter", korean: "비틀거리다" },
+                { english: "sully", korean: "더럽히다" },
+                { english: "fragrant", korean: "향기로운" },
+                { english: "tentative", korean: "임시적인" },
+                { english: "suppress", korean: "진압하다" },
+                { english: "vacuous", korean: "공허한; 멍청한" },
+                { english: "see if ~", korean: "~여부를 살펴보다" },
+                { english: "it remains to be seen if ~", korean: "~여부는 두고 볼 일이다" }
+            ],
+            5: [
+                { english: "defraud", korean: "횡령하다" },
+                { english: "subvert", korean: "전복하다" },
+                { english: "cow", korean: "위협하다" },
+                { english: "tenacious", korean: "완고한" },
+                { english: "delegate", korean: "파견하다: 파견단" },
+                { english: "cram", korean: "억지로 밀어 넣다: 벼락치기 공부하다" },
+                { english: "demagogue", korean: "대중선동가" },
+                { english: "fuel", korean: "연료를 주입하다 가속화시키다" },
+                { english: "sullen", korean: "토라진" },
+                { english: "functionary", korean: "직원, 공무원" },
+                { english: "commercial", korean: "광고" },
+                { english: "superficial", korean: "피상적인" },
+                { english: "bleak", korean: "암울한" },
+                { english: "furrow", korean: "고랑, 골" },
+                { english: "futility", korean: "허무함" },
+                { english: "gag order", korean: "함구령(緘口令)" },
+                { english: "throb", korean: "가슴이 고동(鼓動)치다" },
+                { english: "disburse", korean: "지급하다" },
+                { english: "compatriot", korean: "동포" },
+                { english: "aggrandize", korean: "과장하다" },
+                { english: "compelling", korean: "흥미를 돋우는 강압적인" },
+                { english: "ensuing", korean: "잇따르는, 연속적인" },
+                { english: "traduce", korean: "비방하다" },
+                { english: "give way to A", korean: "A에게 길을 터주다" },
+                { english: "eulogy", korean: "송덕문" },
+                { english: "gung-ho", korean: "무턱대고 열심히 하는" },
+                { english: "hermit", korean: "은둔자" },
+                { english: "altruistic", korean: "이타적인" },
+                { english: "complement", korean: "보완하다. 보충하다" },
+                { english: "hypnotic", korean: "졸리는" },
+                { english: "turbulent", korean: "떠들썩한" },
+                { english: "blank slate", korean: "빈 서판, 후천적" },
+                { english: "complimentary", korean: "칭찬하는: 무료의" },
+                { english: "impending", korean: "임박한" },
+                { english: "sanguine", korean: "낙관적인; 혈색이 좋은" },
+                { english: "even-minded", korean: "한결같은" },
+                { english: "comprise", korean: "구성하다" },
+                { english: "soap opera", korean: "연속극" },
+                { english: "inculpate", korean: "죄를 씌우다" },
+                { english: "macabre", korean: "죽음의, 병적인" },
+                { english: "condescending", korean: "거들먹거리는" },
+                { english: "misconstrue", korean: "오해하다" },
+                { english: "conscript", korean: "징집하다" },
+                { english: "sustain life", korean: "목숨을 유지하다" },
+                { english: "morbid", korean: "병적인" },
+                { english: "content", korean: "만족하는" },
+                { english: "sporadic", korean: "산발적인" },
+                { english: "morose", korean: "우울한" },
+                { english: "contravene", korean: "위반하다" },
+                { english: "swamp", korean: "늪에 빠뜨리다)" },
+                { english: "muse on A", korean: "A를 숙고하다" },
+                { english: "credit A with B", korean: "A에게 B의 공을 돌리다" },
+                { english: "orator", korean: "명연설가" },
+                { english: "squander", korean: "낭비하다" },
+                { english: "crowning", korean: "최고의" },
+                { english: "participant", korean: "실험참가자" },
+                { english: "standoff", korean: "대치" },
+                { english: "rectitude", korean: "청렴" },
+                { english: "cure-all", korean: "만병통치약" },
+                { english: "staple", korean: "주식(主食); 기본적인 것" },
+                { english: "repatriate", korean: "본국송환하다" },
+                { english: "curry favor with", korean: "비위를 맞추다" },
+                { english: "reprimand", korean: "견책하다. 질책하다" },
+                { english: "cutting-edge", korean: "최첨단의" },
+                { english: "retort", korean: "반박하다" },
+                { english: "stark", korean: "엄연한" },
+                { english: "contrive", korean: "고안하다" },
+                { english: "stockpile", korean: "저장하다" },
+                { english: "contumacious", korean: "오만한" },
+                { english: "subject", korean: "실험참가자" },
+                { english: "relentless", korean: "무자비한" },
+                { english: "subjugate", korean: "굴복시키다" },
+                { english: "ferment", korean: "발효(醱酵)하다" },
+                { english: "subpoena", korean: "소환하다: 소환장" },
+                { english: "foment", korean: "조장하다" },
+                { english: "geek", korean: "얼간이, 괴짜" },
+                { english: "convene", korean: "모으다" },
+                { english: "swamped", korean: "몹시 바빠 정신이 없는" },
+                { english: "take A seriously", korean: "A를 신중하게 생각하다" },
+                { english: "cornerstone", korean: "초석" },
+                { english: "unsavory", korean: "(도덕적으로) 불미스러운" },
+                { english: "volunteer", korean: "실험참가자" },
+                { english: "whimsical", korean: "변덕스런" },
+                { english: "corrode", korean: "부식하다" },
+                { english: "writ", korean: "공문서" },
+                { english: "grapple with", korean: "해결하려고 고심하다" },
+                { english: "tangible", korean: "구체적인; 만져서 알 수 있는" },
+                { english: "counterfeit", korean: "위조하다" },
+                { english: "gruesome", korean: "섬뜩한" },
+                { english: "xenophobia", korean: "외국인 공포증; 인종차별" },
+                { english: "court", korean: "구애(求愛)하다" },
+                { english: "corroborate", korean: "확증(確證)하다" },
+                { english: "ephemeral", korean: "일시적인" },
+                { english: "gullible", korean: "속기 쉬운" },
+                { english: "tug of war", korean: "줄다리기" },
+                { english: "contain", korean: "포함하다: 억제하다" },
+                { english: "sanction", korean: "제재하다: 인가하다. 승인하다" },
+                { english: "original", korean: "독창적인, 새로운 원조의, 오래된" },
+                { english: "sap", korean: "힘, 활기 약화시키다" },
+                { english: "skittish", korean: "까불대는: 겁이 많은" }
+            ],
+            6: [
+                { english: "botanist", korean: "식물학자" },
+                { english: "rob A of B", korean: "A에게서 B를 없애다" },
+                { english: "decipher", korean: "해석(解釋)하다: 해독(解讀)하다" },
+                { english: "callous", korean: "냉담한" },
+                { english: "detraction", korean: "비난" },
+                { english: "colossal", korean: "거대한" },
+                { english: "recede", korean: "물러나다" },
+                { english: "diatribe", korean: "비방" },
+                { english: "reclusive", korean: "고립적인" },
+                { english: "disaffected", korean: "불만을 품은" },
+                { english: "score", korean: "원한 20; 악보" },
+                { english: "rejoinder", korean: "말대꾸" },
+                { english: "crook", korean: "사기꾼" },
+                { english: "ingenious", korean: "독창적인" },
+                { english: "scorn", korean: "비꼬다" },
+                { english: "repercussion", korean: "영향" },
+                { english: "crossroads", korean: "갈림길" },
+                { english: "culmination", korean: "최고점" },
+                { english: "snub", korean: "무시하다" },
+                { english: "cozy", korean: "편안한" },
+                { english: "opt for A", korean: "A를 선택하다" },
+                { english: "stead", korean: "이익" },
+                { english: "crack", korean: "일류의 순도 높은 코카인" },
+                { english: "orchid", korean: "난초꽃" },
+                { english: "irreconcilable", korean: "화해 불가능한" },
+                { english: "cut-rate", korean: "할인가격의" },
+                { english: "scuffle", korean: "실랑이" },
+                { english: "strongman", korean: "독재자" },
+                { english: "restraint", korean: "자제" },
+                { english: "orthodox", korean: "정교의 정통의" },
+                { english: "crux", korean: "급소; 핵심" },
+                { english: "culpable", korean: "비난받을만한" },
+                { english: "in the face of A", korean: "A에도 불구하고" },
+                { english: "palpable", korean: "구체적인" },
+                { english: "sedentary", korean: "주로 앉아서 지내는" },
+                { english: "cutback", korean: "삭감" },
+                { english: "wholehearted", korean: "성의 있는" },
+                { english: "menace", korean: "위협(하다)" },
+                { english: "plight", korean: "고충" },
+                { english: "discreet", korean: "신중한" },
+                { english: "retribution", korean: "보복" },
+                { english: "zeal", korean: "열의" },
+                { english: "wrath", korean: "격노" },
+                { english: "conspiracy", korean: "음모" },
+                { english: "disenchant", korean: "마법에서 풀다" },
+                { english: "precipitous", korean: "황급한" },
+                { english: "scaffolding", korean: "(공사장의) 비계: 기반" },
+                { english: "corollary", korean: "결과" },
+                { english: "copycat", korean: "모방자" },
+                { english: "inevitable", korean: "불가피한" },
+                { english: "tremendous", korean: "엄청난" },
+                { english: "premise", korean: "전제" },
+                { english: "even so", korean: "그럼에도 불구하고" },
+                { english: "feasible", korean: "실행 가능한" },
+                { english: "conception", korean: "임신: 개념(착상)" },
+                { english: "run-off", korean: "결선투표" },
+                { english: "bent", korean: "성향" },
+                { english: "fiscal policy", korean: "재정 정책" },
+                { english: "concession", korean: "양보" },
+                { english: "for all A", korean: "A에도 불구하고" },
+                { english: "condolence", korean: "애도(哀悼)" },
+                { english: "with all A", korean: "A에도 불구하고" },
+                { english: "confidant", korean: "신뢰할 수 있는 친구" },
+                { english: "horticulture", korean: "원예학" },
+                { english: "crest", korean: "정상(頂上); 닭 벼슬" },
+                { english: "indignity", korean: "불명예" },
+                { english: "schizophrenia", korean: "정신분열증" },
+                { english: "reiterate", korean: "반복하다" },
+                { english: "crest-fallen", korean: "닭 벼슬이 처진; 낙담한" },
+                { english: "infuriate", korean: "분노하게 하다" },
+                { english: "weather", korean: "이겨내다" },
+                { english: "on doing A", korean: "A하자마자" },
+                { english: "vengeance", korean: "복수" },
+                { english: "trait", korean: "특징" },
+                { english: "watchdog", korean: "감시자" },
+                { english: "comprehensive", korean: "포괄적인; 이해하는" },
+                { english: "well-rounded", korean: "포괄적인" },
+                { english: "self-possession", korean: "냉정, 침착, 자제(自制)" },
+                { english: "rid A of B", korean: "A에게서 B를 없애다" },
+                { english: "multifarious", korean: "다양한" },
+                { english: "sham", korean: "가짜(의)" },
+                { english: "rife", korean: "만연한" },
+                { english: "shelve", korean: "보류하다" },
+                { english: "covert", korean: "은밀한" },
+                { english: "notwithstanding A", korean: "A에도 불구하고" },
+                { english: "A notwithstanding", korean: "A에도 불구하고" },
+                { english: "covenant", korean: "계약" },
+                { english: "quagmire", korean: "곤경" },
+                { english: "sagging", korean: "침체된" },
+                { english: "conglomerate", korean: "대기업 집단" },
+                { english: "disingenuous", korean: "솔직하지 못한" },
+                { english: "eminent", korean: "저명한" },
+                { english: "custody", korean: "양육권; 구금(拘禁)" },
+                { english: "salutary", korean: "건강에 좋은" },
+                { english: "conspicuous", korean: "눈에 띄는" },
+                { english: "sanctuary", korean: "보호구역" },
+                { english: "except (for) A", korean: "A를 제외하고" },
+                { english: "save (for) A", korean: "A를 제외하고" },
+                { english: "but (for) A", korean: "A를 제외하고" },
+                { english: "barring A", korean: "A를 제외하고" }
+            ],
+            7: [
+                { english: "taxing", korean: "가혹한" },
+                { english: "acquisition", korean: "습득" },
+                { english: "discern", korean: "식별하다" },
+                { english: "agronomy", korean: "농업경제학" },
+                { english: "discomfit", korean: "좌절시키다" },
+                { english: "amorphous", korean: "형태가 없는" },
+                { english: "thorny issue", korean: "난제" },
+                { english: "pecuniary", korean: "돈의" },
+                { english: "veer", korean: "(방향을 바꾸다" },
+                { english: "waiver", korean: "권리의 철회" },
+                { english: "discrete", korean: "따로따로의" },
+                { english: "smart", korean: "분개하다" },
+                { english: "drove", korean: "무리" },
+                { english: "and vice versa", korean: "그리고 그 반대도 마찬가지다" },
+                { english: "disenthrall", korean: "해방시키다. 속박을 풀다" },
+                { english: "come up with A", korean: "A를 내어놓다" },
+                { english: "disfranchise", korean: "선거권을 박탈하다" },
+                { english: "thrash out", korean: "충분한 대화로 해결하다" },
+                { english: "unravel", korean: "해결하다" },
+                { english: "covet", korean: "탐내다" },
+                { english: "disillusion", korean: "환멸을 느끼게 하다)" },
+                { english: "eccentric", korean: "기괴한" },
+                { english: "pertain to A", korean: "A와 관련되다" },
+                { english: "disintegrate", korean: "분해시키다" },
+                { english: "surreptitious", korean: "비밀의" },
+                { english: "effete", korean: "기운이 빠진" },
+                { english: "sway", korean: "영향을 미치다" },
+                { english: "tooth and nail", korean: "필사적으로" },
+                { english: "egocentric", korean: "자기중심적인" },
+                { english: "eleemosynary", korean: "이타적인, 자선을 배푸는" },
+                { english: "thrive", korean: "번영하다" },
+                { english: "embark on A", korean: "A에 착수하다" },
+                { english: "tit-for-tat", korean: "맞대응(의)" },
+                { english: "entitle A B", korean: "A를 B라 명명하다" },
+                { english: "hold sway", korean: "위력을 발휘하다" },
+                { english: "dead wrong", korean: "완전히 잘못된" },
+                { english: "hospitable", korean: "친절한" },
+                { english: "dearth", korean: "결핍" },
+                { english: "hurdle", korean: "장애물" },
+                { english: "surrender", korean: "항복하다" },
+                { english: "ethereal", korean: "천상의; 가뿐한" },
+                { english: "resurrect", korean: "부활하다" },
+                { english: "robust", korean: "튼튼한" },
+                { english: "disparate", korean: "이질적인" },
+                { english: "revamp", korean: "개조하다. 수리하다" },
+                { english: "daunt", korean: "기세를 꺾다" },
+                { english: "philanthropic", korean: "이타적인" },
+                { english: "decertify", korean: "증명을 취소하다" },
+                { english: "hypnotize", korean: "최면 걸다" },
+                { english: "decrement", korean: "감소" },
+                { english: "illegible", korean: "읽기 어려운" },
+                { english: "run-up", korean: "준비기간" },
+                { english: "defunct", korean: "죽은" },
+                { english: "impasse", korean: "곤경" },
+                { english: "foot the bill", korean: "비용을 대다 책임을 떠안다" },
+                { english: "dejected", korean: "낙심한" },
+                { english: "improvised", korean: "즉흥적으로 만든" },
+                { english: "denuclearize", korean: "핵무장을 금지하다" },
+                { english: "impute A to B", korean: "A를 B의 탓으로 돌리다" },
+                { english: "gynecology", korean: "부인의학과(婦人醫學科)" },
+                { english: "deploy", korean: "배치하다" },
+                { english: "in sum", korean: "요약하자면" },
+                { english: "hands-on", korean: "실무적인" },
+                { english: "designate", korean: "지명(指名)하다" },
+                { english: "incense", korean: "화나게 하다" },
+                { english: "detrimental", korean: "해로운" },
+                { english: "incumbent", korean: "현직의" },
+                { english: "hoax", korean: "속이다" },
+                { english: "die-hard", korean: "끝까지 버티는" },
+                { english: "intact", korean: "손상을 입지 않은" },
+                { english: "dilapidate", korean: "황폐하게 만들다" },
+                { english: "legislation", korean: "법안" },
+                { english: "dingy", korean: "거무죽죽한" },
+                { english: "mantle", korean: "덮다: 덮개" },
+                { english: "dip", korean: "담그다: 급락하다" },
+                { english: "ostensible", korean: "외견상의" },
+                { english: "disavow", korean: "부인하다" },
+                { english: "proposition", korean: "시민발의안건" },
+                { english: "remit", korean: "완화하다: 송금하다" },
+                { english: "dismantle", korean: "제거하다" },
+                { english: "reparation", korean: "보상(금)" },
+                { english: "disparage", korean: "얕보다" },
+                { english: "disseminate", korean: "흩어지다" },
+                { english: "plagiarize", korean: "표절하다" },
+                { english: "rustic", korean: "시골의" },
+                { english: "dividend", korean: "배당금" },
+                { english: "shun", korean: "피하다" },
+                { english: "dogged", korean: "끈질긴" },
+                { english: "sitting", korean: "현직의" },
+                { english: "dovetail", korean: "긴밀히 연결하다" },
+                { english: "skeptical", korean: "회의적인" },
+                { english: "downplay", korean: "무시하다" },
+                { english: "moan", korean: "고통으로 신음하다. 끙끙대다" },
+                { english: "mourn", korean: "슬퍼하다: 흐느껴 울다: 추모하다" },
+                { english: "emaciate", korean: "여위게 하다" },
+                { english: "emancipate", korean: "해방시키다" },
+                { english: "parlay", korean: "계속 활용하다" },
+                { english: "parley", korean: "협상" },
+                { english: "diurnal", korean: "주행성(晝行性)의" },
+                { english: "nocturnal", korean: "야행성(夜行性)의" }
+            ],
+            8: [
+                { english: "maladroit", korean: "솜씨 없는, 재치 없는" },
+                { english: "off the coast", korean: "근해(近海)에서" },
+                { english: "disarray", korean: "무질서" },
+                { english: "expenditure", korean: "비용" },
+                { english: "rhetorical", korean: "수사적(修辭的)인; 화려한 언변의" },
+                { english: "apprentice", korean: "견습" },
+                { english: "postulate", korean: "가정하다 생각하다" },
+                { english: "dire", korean: "비참한" },
+                { english: "traitor", korean: "반역자" },
+                { english: "grudge", korean: "원한을 품다" },
+                { english: "indiscriminate", korean: "무차별적인" },
+                { english: "burrow", korean: "은신처; 굴을 파고 숨다" },
+                { english: "disabuse", korean: "어리석음을 깨우치다" },
+                { english: "extort", korean: "강탈하다. 착취하다" },
+                { english: "precarious", korean: "불안정한" },
+                { english: "calf", korean: "포유류의 새끼" },
+                { english: "jaundiced", korean: "편견의; 황달(黃疸)에 걸린" },
+                { english: "turn on", korean: "켜다" },
+                { english: "euphemism", korean: "완곡어법" },
+                { english: "call off", korean: "취소하다" },
+                { english: "drawback", korean: "결점" },
+                { english: "smokestack", korean: "재래식 산업의" },
+                { english: "dupe", korean: "얼간이" },
+                { english: "stump", korean: "그루터기" },
+                { english: "dwarf", korean: "무색하게 만들다" },
+                { english: "rebellious", korean: "반항하는" },
+                { english: "riveting", korean: "매혹적인" },
+                { english: "dismissal", korean: "해고; 무시" },
+                { english: "pretence", korean: "흉내, 척하기" },
+                { english: "vacuity", korean: "공허함; 멍청함" },
+                { english: "carnivorous", korean: "육식성의" },
+                { english: "distraught", korean: "마음이 산란한" },
+                { english: "yearn", korean: "갈망하다" },
+                { english: "come to do A", korean: "A해 버리다" },
+                { english: "prevail", korean: "우세하다" },
+                { english: "distress", korean: "곤궁함" },
+                { english: "endorse", korean: "지지하다: 광고하다 배서(背書)하다" },
+                { english: "compliment", korean: "칭찬하다" },
+                { english: "domineering", korean: "오만한" },
+                { english: "pummel", korean: "연달아 때리다" },
+                { english: "condemn", korean: "사형을 선고하다: 비난하다" },
+                { english: "dope", korean: "마약" },
+                { english: "equivalent", korean: "동등한 (것)" },
+                { english: "hollow", korean: "텅빈" },
+                { english: "palatable", korean: "입맛에 맞는" },
+                { english: "death penalty, the", korean: "사형제" },
+                { english: "pamper", korean: "지나치게 잘해주다" },
+                { english: "debrief", korean: "보고받다" },
+                { english: "remnant", korean: "파편, 잔해" },
+                { english: "pandemonium", korean: "복마전, 대혼란" },
+                { english: "penalize", korean: "벌을 주다" },
+                { english: "defuse", korean: "뇌관을 제거하다" },
+                { english: "give birth", korean: "낳다" },
+                { english: "penitent", korean: "회개하는" },
+                { english: "cub", korean: "포유류의 새끼; 신입 기자" },
+                { english: "grow to do A", korean: "A해 버리다" },
+                { english: "defy", korean: "반항하다" },
+                { english: "persistent", korean: "완고한; 일관성 있는" },
+                { english: "deluge", korean: "홍수" },
+                { english: "pivotal", korean: "중추적(中樞的)인" },
+                { english: "deport", korean: "추방하다" },
+                { english: "plucky", korean: "용기 있는" },
+                { english: "desolate", korean: "황폐한" },
+                { english: "pommel", korean: "연달아 때리다" },
+                { english: "dicker", korean: "흥정하다" },
+                { english: "put off", korean: "연기하다" },
+                { english: "quibble", korean: "애매모호한 말을 하다)" },
+                { english: "prose", korean: "산문" },
+                { english: "ramshackle", korean: "흔들거리는" },
+                { english: "legitimate", korean: "타당한; 합법적인" },
+                { english: "ransom", korean: "(납치피해자의) 몸값" },
+                { english: "maladept", korean: "충분한 능력이 없는 서투른" },
+                { english: "ratio", korean: "비율" },
+                { english: "quixotic", korean: "돈키호테의 비현실적인" },
+                { english: "remiss", korean: "태만한" },
+                { english: "salient", korean: "현저한 분명한" },
+                { english: "dormant", korean: "동면(冬眠)의 휴식의" },
+                { english: "slick", korean: "미끈한" },
+                { english: "contempt", korean: "경멸" },
+                { english: "ebullient", korean: "원기가 왕성한" },
+                { english: "decrepit", korean: "노쇠한" },
+                { english: "parochial", korean: "편협한" },
+                { english: "renounce", korean: "철회하다: 단념하다" },
+                { english: "deem", korean: "간주하다" },
+                { english: "eclectic", korean: "절충하는" },
+                { english: "gear", korean: "장비" },
+                { english: "patsy", korean: "잘 속는 사람" },
+                { english: "get to do A", korean: "A해 버리다" },
+                { english: "electoral", korean: "선거권 있는" },
+                { english: "crevice", korean: "깊은 틈" },
+                { english: "defer", korean: "연기하다: 존경하다" },
+                { english: "미루다", korean: "미루다" },
+                { english: "amiable", korean: "붙임성이 있는" },
+                { english: "amicable", korean: "사교적인" },
+                { english: "vacillate", korean: "망설이다: 흔들리다" },
+                { english: "oscillate", korean: "진동하다: 흔들리다" },
+                { english: "epidemic", korean: "전염병(의)" },
+                { english: "endemic", korean: "(한 지역의) 풍토병(의)" },
+                { english: "pandemic", korean: "(전 세계적인) 유행병(의)" },
+                { english: "A let go", korean: "A가 풀려나다" },
+                { english: "let go of A", korean: "A를 풀어주다" }
+            ],
+            9: [
+                { english: "stringent", korean: "엄격한" },
+                { english: "a case in point", korean: "예시" },
+                { english: "emulate", korean: "필적하다: 흉내 내다" },
+                { english: "elusive", korean: "잡히지 않는 이해되지 않는" },
+                { english: "overblown", korean: "과장된" },
+                { english: "yea", korean: "찬성(투표)" },
+                { english: "absurdity", korean: "불합리" },
+                { english: "embargo", korean: "보도금지령: 수출입금지령" },
+                { english: "overshadow", korean: "무색하게 만들다" },
+                { english: "embattled", korean: "적에게 포위된" },
+                { english: "overthrow", korean: "(국가를) 전복(顛覆)하다" },
+                { english: "filthy", korean: "더러운" },
+                { english: "embezzle", korean: "횡령하다" },
+                { english: "palliate", korean: "완화시키다" },
+                { english: "encompass", korean: "둘러싸다" },
+                { english: "perjury", korean: "위증(偽證)(죄)" },
+                { english: "endangered", korean: "멸종위기의" },
+                { english: "expertise", korean: "전문적 지식" },
+                { english: "short-lived", korean: "단명한" },
+                { english: "surveillance", korean: "감시" },
+                { english: "equivocal", korean: "찬반의 목소리가 비슷한 모호한" },
+                { english: "libidinous", korean: "호색의; 육욕적인" },
+                { english: "eschew", korean: "삼가다" },
+                { english: "modify", korean: "변형하다" },
+                { english: "ethnic", korean: "인종의" },
+                { english: "nerd", korean: "멍청하고 따분한 사람" },
+                { english: "evanescent", korean: "일시적인" },
+                { english: "repellent", korean: "거부하는" },
+                { english: "endogenous", korean: "내생(변수)의 내부에 있는" },
+                { english: "exogenous", korean: "외생(변수)의 외부에 있는" },
+                { english: "obstacle", korean: "장애물" },
+                { english: "eavesdrop", korean: "도청하다" },
+                { english: "obviate", korean: "미리 제거하다" },
+                { english: "philistine", korean: "교양 없는(사람); 속물(의)" },
+                { english: "prestigious", korean: "명망 있는" },
+                { english: "founder", korean: "실패하다" },
+                { english: "enmity", korean: "증오" },
+                { english: "expurgate", korean: "삭제하다" },
+                { english: "gall", korean: "초조하게 하다" },
+                { english: "indent", korean: "들여쓰기를 하다" },
+                { english: "gluttonize", korean: "게걸스럽게 먹다" },
+                { english: "entrench", korean: "참호로 에워싸다" },
+                { english: "inhospitable", korean: "친절하지 않은" },
+                { english: "entwine", korean: "엉키게 하다" },
+                { english: "broaden one's horizon", korean: "견문을 넓히다" },
+                { english: "proliferation", korean: "확산" },
+                { english: "serene", korean: "평온한" },
+                { english: "nerve-racking", korean: "괴롭히는" },
+                { english: "clerk", korean: "점원" },
+                { english: "prosperous", korean: "번영의" },
+                { english: "enforce", korean: "(법 등을) 집행하다" },
+                { english: "proxy", korean: "대리" },
+                { english: "engineer", korean: "조작하다" },
+                { english: "inimical", korean: "악의적(惡意的)인, 적대적인" },
+                { english: "exposure", korean: "노출: (은행의) 대출금액" },
+                { english: "layman", korean: "일반인, 비전문인" },
+                { english: "equitable", korean: "공평한" },
+                { english: "torture", korean: "고문(하다)" },
+                { english: "phlegmatic", korean: "냉정한; 담성의" },
+                { english: "unwavering", korean: "흔들리지 않는" },
+                { english: "abundance", korean: "풍요" },
+                { english: "veto", korean: "거부하다: 거부권" },
+                { english: "porous", korean: "구멍이 많은 투과성(透過性)의" },
+                { english: "ally", korean: "연합군" },
+                { english: "left-justified", korean: "(편집상으로) 좌측 정렬된" },
+                { english: "echelon", korean: "계급, 계층" },
+                { english: "odds", korean: "(상대적으로 낮은) 확률" },
+                { english: "eclipse", korean: "무색하게 만들다" },
+                { english: "opaque", korean: "불투명한" },
+                { english: "edict", korean: "칙령 명령" },
+                { english: "open-ended", korean: "제한이 없는" },
+                { english: "effect", korean: "초래하다" },
+                { english: "optimal", korean: "최적의" },
+                { english: "egg", korean: "부추기다" },
+                { english: "out-and-out", korean: "속속들이, 완전히" },
+                { english: "egregious", korean: "터무니없는" },
+                { english: "outstanding", korean: "뛰어난, 눈에 띄는 미지불된, 연체된" },
+                { english: "eke out", korean: "부족분을 채우다" },
+                { english: "gainsay", korean: "반대하다" },
+                { english: "elapse", korean: "경과하다" },
+                { english: "predilection", korean: "매우 좋아함" },
+                { english: "evince", korean: "명시하다" },
+                { english: "nettle", korean: "화나게 하는 것: 짜증나게 하다" },
+                { english: "exacerbate", korean: "악화시키다" },
+                { english: "noose", korean: "올가미" },
+                { english: "exact", korean: "가혹한" },
+                { english: "oblique", korean: "완곡한" },
+                { english: "rut", korean: "관례, 관습, 틀" },
+                { english: "exile", korean: "망명: 망명자" },
+                { english: "exponential", korean: "기하급수적인" },
+                { english: "somniferous", korean: "졸리는" },
+                { english: "earmark", korean: "별도로 책정하다 따로 표기하다" },
+                { english: "soporific", korean: "졸리는" },
+                { english: "persecute", korean: "박해하다" },
+                { english: "prosecute", korean: "기소하다" },
+                { english: "contrite", korean: "뉘우치는" },
+                { english: "trite", korean: "진부한" },
+                { english: "sever", korean: "절단하다" },
+                { english: "severe", korean: "심한, 엄한" }
+            ],
+            10: [
+                { english: "futile", korean: "쓸데없는; 헛된" },
+                { english: "enfranchise", korean: "선거권을 주다" },
+                { english: "outset", korean: "시작" },
+                { english: "one-on-one", korean: "일대일로" },
+                { english: "nouveau riche", korean: "벼락부자" },
+                { english: "onset", korean: "시작" },
+                { english: "parvenu", korean: "벼락부자" },
+                { english: "pretext", korean: "변명" },
+                { english: "extenuate", korean: "희박하게 만들다" },
+                { english: "literacy", korean: "글을 쓰고 읽는 능력" },
+                { english: "novice", korean: "초보자" },
+                { english: "fumble", korean: "실수하다 더듬(어 찾)다" },
+                { english: "exterminate", korean: "근절하다" },
+                { english: "pinch", korean: "위기" },
+                { english: "nullify", korean: "무효로 만들다" },
+                { english: "erupt", korean: "분출하다" },
+                { english: "lumber", korean: "목재" },
+                { english: "ongoing", korean: "지속적인" },
+                { english: "frenzy", korean: "격앙" },
+                { english: "exploit", korean: "착취하다" },
+                { english: "notorious", korean: "악명 높은" },
+                { english: "expropriate", korean: "빼앗다" },
+                { english: "damages", korean: "배상금" },
+                { english: "punitive damages", korean: "징벌적 손해배상" },
+                { english: "espionage", korean: "간첩행위, 첩보행위" },
+                { english: "temporal", korean: "시간의 일시적인; 세속적인" },
+                { english: "neutralize", korean: "중립화하다: 무력화(無力化)하다" },
+                { english: "obdurate", korean: "완고한" },
+                { english: "extradite", korean: "송환하다" },
+                { english: "obsess", korean: "집착하다" },
+                { english: "pay off", korean: "수지가 맞다" },
+                { english: "disinterested", korean: "사심이 없는" },
+                { english: "elect", korean: "선출인, 당선인" },
+                { english: "quick fix", korean: "즉각적인 해결책" },
+                { english: "old-fashioned", korean: "구식의" },
+                { english: "peer", korean: "동료" },
+                { english: "galvanize", korean: "활기를 띄게 하다 각별" },
+                { english: "figurative", korean: "비유적인" },
+                { english: "pacity", korean: "달래다: 평화를 가져오다" },
+                { english: "elicit", korean: "(감정 등을) 유발하다" },
+                { english: "garrulous", korean: "수다스러운" },
+                { english: "pernicious", korean: "유독한" },
+                { english: "foothold", korean: "발판" },
+                { english: "extirpate", korean: "근절시키다" },
+                { english: "numeracy", korean: "수를 셈하는 능력" },
+                { english: "gratification", korean: "만족" },
+                { english: "forthcoming", korean: "곧 다가올" },
+                { english: "haggle", korean: "(물건 값 등을 놓고) 옥신각신하다" },
+                { english: "one-off", korean: "단 한번의, 일회성의" },
+                { english: "quotient", korean: "몫, 양" },
+                { english: "racketeer", korean: "공갈; 갈취(하다)" },
+                { english: "entreat", korean: "탄원하다" },
+                { english: "inhabit", korean: "거주하다" },
+                { english: "petulant", korean: "화 잘 내는" },
+                { english: "equate", korean: "동등하게 다루다" },
+                { english: "raid", korean: "습격" },
+                { english: "err on the right side", korean: "큰 과오를 피하도록 하다" },
+                { english: "ramification", korean: "(파생적) 결과" },
+                { english: "socioeconomic", korean: "사회경제적인" },
+                { english: "fume", korean: "분노(하다)" },
+                { english: "preclude", korean: "못하게 하다 미리 배제하다" },
+                { english: "tackle", korean: "해결하다: 다루다" },
+                { english: "espouse", korean: "옹호하다" },
+                { english: "manumit", korean: "(노예 ㆍ농노를) 해방하다 마니" },
+                { english: "predicament", korean: "곤경" },
+                { english: "turn to A", korean: "A에 의존하다" },
+                { english: "open-door", korean: "문호개방의" },
+                { english: "prelude", korean: "전주" },
+                { english: "opulent", korean: "부유한" },
+                { english: "premonition", korean: "(불길한) 징후" },
+                { english: "viral", korean: "바이러스의 유행하는" },
+                { english: "methodological", korean: "방법론적인" },
+                { english: "evacuate", korean: "피난시키다; (해당 지역을) 비우다" },
+                { english: "narcotic", korean: "마약성의 니코팅" },
+                { english: "privilege", korean: "특권" },
+                { english: "reconnaissance", korean: "정찰(精察)" },
+                { english: "evoke", korean: "(감정 등을 유발하다" },
+                { english: "nascent", korean: "싹트는, 미성숙한" },
+                { english: "evolve", korean: "전개되다: 진화하다" },
+                { english: "nepotism", korean: "족벌(族閥)정치" },
+                { english: "proselyte", korean: "변절자" },
+                { english: "exasperate", korean: "격분하게 만들다 부정적" },
+                { english: "excoriate", korean: "통렬히 비난하다 의견" },
+                { english: "news conference", korean: "기자회견" },
+                { english: "press conference", korean: "기자회견" },
+                { english: "exert", korean: "(권력 등을) 발휘하다" },
+                { english: "no-holds-barred", korean: "치열한" },
+                { english: "exhilarate", korean: "원기를 돋우다" },
+                { english: "off-limits", korean: "출입금지의" },
+                { english: "exult", korean: "크게 기뻐하다" },
+                { english: "offset", korean: "상쇄(相殺)하다" }
+            ],
+            11: [
+                { english: "flak", korean: "혹평" },
+                { english: "loathe", korean: "혐오하다" },
+                { english: "flamboyant", korean: "화려한" },
+                { english: "lofty", korean: "숭고한" },
+                { english: "flank", korean: "(측면)공격하다" },
+                { english: "mythology", korean: "신화" },
+                { english: "flaunt", korean: "과시하다" },
+                { english: "nag", korean: "끈질기게 괴롭히다. 잔소리하다" },
+                { english: "flay", korean: "혹평하다" },
+                { english: "neuter", korean: "거세(去勢)하다: 무력화시키다" },
+                { english: "fledgling", korean: "애송이" },
+                { english: "nix", korean: "무(無); 금지하다: 취소하다" },
+                { english: "flog", korean: "채찍질하다" },
+                { english: "flourish", korean: "번영하다" },
+                { english: "fortify", korean: "요새화하다: 강화하다" },
+                { english: "offshoot", korean: "파생적 결과" },
+                { english: "vapid", korean: "흥미롭지 못한" },
+                { english: "oligarchy", korean: "과두정치(寡頭政治)" },
+                { english: "priority", korean: "우선순위" },
+                { english: "fable", korean: "우화" },
+                { english: "gambit", korean: "책략" },
+                { english: "obedient", korean: "복종하는" },
+                { english: "phony", korean: "가짜" },
+                { english: "benign", korean: "양성의" },
+                { english: "emasculate", korean: "무력화(無力化)시키다" },
+                { english: "on a par", korean: "동등한" },
+                { english: "about", korean: "대략: 여기저기에 (around)" },
+                { english: "fabricate", korean: "꾸며내다" },
+                { english: "obscure", korean: "모호한" },
+                { english: "bizarre", korean: "기괴한" },
+                { english: "finesse", korean: "기교" },
+                { english: "privy", korean: "비밀스러운" },
+                { english: "vein", korean: "정맥" },
+                { english: "garnish", korean: "(요리에) 고명을 얹다 꾸미다" },
+                { english: "facade", korean: "외관" },
+                { english: "overhaul", korean: "점검하다" },
+                { english: "embody", korean: "구체화하다" },
+                { english: "fad", korean: "일시적 유행" },
+                { english: "frill", korean: "주름장식; 목털" },
+                { english: "gloss over", korean: "얼버무리고 넘어가다" },
+                { english: "fallow", korean: "경작(耕作)하지 않은" },
+                { english: "proliferate", korean: "증식하다" },
+                { english: "funnel", korean: "집중투여하다" },
+                { english: "on hold", korean: "연기된" },
+                { english: "prop", korean: "떠받치다" },
+                { english: "console", korean: "위로하다" },
+                { english: "have no choice but to do", korean: "할 수밖에 없다" },
+                { english: "fit", korean: "건강한; 발작" },
+                { english: "constrict", korean: "제한하다" },
+                { english: "prune", korean: "잘라내다 말린 자두" },
+                { english: "say", korean: "예를 들어" },
+                { english: "obsolete", korean: "구식의" },
+                { english: "falter", korean: "비틀거리다" },
+                { english: "obtrusive", korean: "(주제넘게) 참견하는" },
+                { english: "osmotic", korean: "삼투압의" },
+                { english: "far-flung", korean: "광범위한" },
+                { english: "hierarchy", korean: "계급" },
+                { english: "sensual", korean: "관능적인" },
+                { english: "horn", korean: "뿔" },
+                { english: "far-reaching", korean: "광범위한" },
+                { english: "implore", korean: "애원하다" },
+                { english: "onerous", korean: "번거로운" },
+                { english: "courteous", korean: "예의바른" },
+                { english: "vigil", korean: "철야(기도), 불침번" },
+                { english: "in shape", korean: "건강한" },
+                { english: "fastness", korean: "견고함: 고착" },
+                { english: "intermittent", korean: "간헐적(間歇的)인" },
+                { english: "federal", korean: "연방의" },
+                { english: "on offer", korean: "매물로 나와 있는" },
+                { english: "irreproachable", korean: "무결점의" },
+                { english: "feeble", korean: "연약한" },
+                { english: "lambast", korean: "호통 치다" },
+                { english: "feign", korean: "가장하다" },
+                { english: "lateral", korean: "측면의" },
+                { english: "skull", korean: "두개골" },
+                { english: "feud", korean: "불화; 봉토(封土)" },
+                { english: "occult", korean: "숨기다: 비밀의 신비한" },
+                { english: "to name a few", korean: "몇몇 예를 들자면" },
+                { english: "furlough", korean: "휴가: 일시적 해고" },
+                { english: "ornament", korean: "장식: 장식품: 장식하다" },
+                { english: "fervent", korean: "열렬한" },
+                { english: "lecherous", korean: "호색(好色)의" },
+                { english: "undeserving", korean: "자격이 없는" },
+                { english: "fierce", korean: "사나운" },
+                { english: "legislator", korean: "국회의원" },
+                { english: "crunch", korean: "부수다" },
+                { english: "stopgap", korean: "임시방편의" },
+                { english: "officious", korean: "간섭하는" },
+                { english: "libido", korean: "애욕(愛慾), 성적 충동" },
+                { english: "flag", korean: "시들다. 처지다" },
+                { english: "limpid", korean: "맑은" },
+                { english: "flagrant", korean: "극악무도한" },
+                { english: "cryptic", korean: "비밀의, 암호의" },
+                { english: "lingo", korean: "전문적인 용어" }
+            ],
+            12: [
+                { english: "pact", korean: "협정" },
+                { english: "fast", korean: "확고하게" },
+                { english: "rebate", korean: "일부를 되돌려주다 할인(하다)" },
+                { english: "skirmish", korean: "소규모 접전" },
+                { english: "unscathed", korean: "다치지 않은" },
+                { english: "adverse", korean: "부정적인; 역(逆)의" },
+                { english: "obstinate", korean: "고집 센" },
+                { english: "lenient", korean: "관대한" },
+                { english: "halcyon", korean: "평화로운" },
+                { english: "odious", korean: "불쾌한" },
+                { english: "illiterate", korean: "문맹의" },
+                { english: "garish", korean: "야한" },
+                { english: "foresight", korean: "선견지명" },
+                { english: "appreciate", korean: "이해하다: 감사하다" },
+                { english: "gird", korean: "대비하다" },
+                { english: "forsake", korean: "포기하다" },
+                { english: "compromise", korean: "타협하다: 손상을 입히다" },
+                { english: "glitch", korean: "결함, 오류" },
+                { english: "ossify", korean: "경화시키다" },
+                { english: "hash out", korean: "대화로 해결하다" },
+                { english: "foolhardy", korean: "저돌적인" },
+                { english: "goad", korean: "선동하다" },
+                { english: "due", korean: "정당한" },
+                { english: "perfidy", korean: "배반" },
+                { english: "merger", korean: "합병" },
+                { english: "fortitude", korean: "용기" },
+                { english: "take A", korean: "A를 예로 들다" },
+                { english: "infallible", korean: "결함이 없는" },
+                { english: "foolproof", korean: "절대 확실한" },
+                { english: "embodiment", korean: "구체화" },
+                { english: "petrify", korean: "겁에 질리게 만들다 석화(石化)시키다" },
+                { english: "ostentatious", korean: "과시하는" },
+                { english: "enigma", korean: "수수께끼" },
+                { english: "fringe", korean: "주변부" },
+                { english: "go-ahead", korean: "진취적인; 허가" },
+                { english: "forgo", korean: "없이 지내다" },
+                { english: "veneration", korean: "존경" },
+                { english: "monument", korean: "기념비" },
+                { english: "pilot", korean: "시범삼아 해보는" },
+                { english: "pinpoint", korean: "적시하다" },
+                { english: "mouthpiece", korean: "대변인" },
+                { english: "unruly", korean: "제멋대로 구는" },
+                { english: "fickle", korean: "변하기 쉬운" },
+                { english: "green light", korean: "공식허가" },
+                { english: "nimble", korean: "영민한; 재빠른, 민첩한" },
+                { english: "pirate", korean: "저작권을 침해하다" },
+                { english: "grit", korean: "근성, 끈기: 담력" },
+                { english: "nuisance", korean: "골칫거리" },
+                { english: "prosperity", korean: "번영" },
+                { english: "go-between", korean: "중매인" },
+                { english: "fortress", korean: "요새" },
+                { english: "rage", korean: "분노" },
+                { english: "fractious", korean: "성을 잘 내는" },
+                { english: "feature", korean: "특징" },
+                { english: "panacea", korean: "만병통치약" },
+                { english: "hassle", korean: "말다툼" },
+                { english: "garner", korean: "모으다" },
+                { english: "insightful", korean: "통찰력 있는" },
+                { english: "forlorn", korean: "고독한" },
+                { english: "handpick", korean: "정선(精選)하다" },
+                { english: "forego", korean: "선행하다" },
+                { english: "outlandish", korean: "기이한" },
+                { english: "ominous", korean: "불길한" },
+                { english: "immune", korean: "면역의" },
+                { english: "piffle", korean: "헛소리" },
+                { english: "emission", korean: "배출(가스)" },
+                { english: "gibe", korean: "비웃다" },
+                { english: "smuggle", korean: "밀수하다" },
+                { english: "judicious", korean: "신중한 판단력 있는" },
+                { english: "jibe", korean: "조롱하다" },
+                { english: "felony", korean: "중범죄" },
+                { english: "hobble", korean: "방해하다" },
+                { english: "fission", korean: "분열" },
+                { english: "brutalize", korean: "잔혹하게 구타하다" },
+                { english: "take root", korean: "뿌리를 내리다" },
+                { english: "gimmick", korean: "장치" },
+                { english: "fester", korean: "굶다" },
+                { english: "by way of illustration", korean: "예를 들어" },
+                { english: "mercurial", korean: "변덕스러운 활달한; 수은(水銀)의" },
+                { english: "incomprehensible", korean: "이해할 수 없는" },
+                { english: "opprobrium", korean: "모욕, 맹비난" },
+                { english: "hard-and-fast", korean: "엄격한" },
+                { english: "pasty", korean: "활기 없는, 창백한" },
+                { english: "loot", korean: "약탈하다" },
+                { english: "outlaw", korean: "무법자" },
+                { english: "frantic", korean: "필사적인" },
+                { english: "emit", korean: "방출하다" },
+                { english: "pillage", korean: "약탈(하다)" },
+                { english: "merit A", korean: "A를 받을 자격이 있다" },
+                { english: "outlay", korean: "지출" },
+                { english: "forestall", korean: "기선제압하다" },
+                { english: "fusion", korean: "융합" },
+                { english: "geist", korean: "정신, 영혼" },
+                { english: "gist", korean: "요점" },
+                { english: "faction", korean: "당파" },
+                { english: "fraction", korean: "일부, 파편: 분수(分數)" },
+                { english: "friction", korean: "마찰, 충돌" },
+                { english: "statute", korean: "법령" },
+                { english: "stature", korean: "키, 신장(身長)" },
+                { english: "statue", korean: "동상(銅像)" }
+            ],
+            13: [
+                { english: "tautology", korean: "중언부언, 유어(類語)반복" },
+                { english: "courtesy", korean: "예의바름, 공손함" },
+                { english: "gratuitous", korean: "무료의: 불필요한" },
+                { english: "cure", korean: "완치(제)" },
+                { english: "hereditary", korean: "세습의 유전의" },
+                { english: "mantra", korean: "마법의 주문" },
+                { english: "gray area", korean: "중간지대: 애매한 영역" },
+                { english: "empiricism", korean: "경험주의" },
+                { english: "incendiary", korean: "선동적인 방화의, 불을 지르기 위한" },
+                { english: "gregarious", korean: "군집성(群集性)의" },
+                { english: "incongruous", korean: "조화롭지 않는" },
+                { english: "enthusiastic", korean: "열정적인" },
+                { english: "mastermind", korean: "배후자" },
+                { english: "highhanded", korean: "고압적인" },
+                { english: "inert", korean: "무기력한" },
+                { english: "grievance", korean: "불만" },
+                { english: "impair", korean: "손상을 입히다" },
+                { english: "motion", korean: "동의(動議), 제안(提案)" },
+                { english: "gaffe", korean: "실수" },
+                { english: "laconic", korean: "할 말만 하는; 간명한" },
+                { english: "inferno", korean: "지옥의 불" },
+                { english: "groundless", korean: "근거 없는" },
+                { english: "hard-pressed", korean: "압박당하는" },
+                { english: "abrasive", korean: "마찰의" },
+                { english: "afford", korean: "형편이 되다. 여유가 되다" },
+                { english: "genocide", korean: "대량학살" },
+                { english: "headlong", korean: "경솔한" },
+                { english: "mesmerize", korean: "최면 걸다" },
+                { english: "now that ~", korean: "(~한) 이유로" },
+                { english: "militia", korean: "비정규군" },
+                { english: "OB/GYN", korean: "산부인과" },
+                { english: "mince one's words", korean: "완곡하게 말하다" },
+                { english: "palliative", korean: "완화하는" },
+                { english: "in a fashion", korean: "(-한) 방식으로" },
+                { english: "in a manner", korean: "(-한) 방식으로" },
+                { english: "mince", korean: "얇게 자르다" },
+                { english: "makeshift", korean: "임시로 만든" },
+                { english: "ambivalent", korean: "양면적인" },
+                { english: "mire", korean: "곤경에 빠뜨리다)" },
+                { english: "geopolitics", korean: "지정학(地政學)" },
+                { english: "at best", korean: "기껏 해 봤자" },
+                { english: "interdict", korean: "금지하다" },
+                { english: "ghastly", korean: "무서운" },
+                { english: "back and forth", korean: "앞뒤로" },
+                { english: "giddy", korean: "현기증 나는" },
+                { english: "belligerent", korean: "적대적인" },
+                { english: "immaculate", korean: "오점 없는" },
+                { english: "manifesto", korean: "성명서" },
+                { english: "glare", korean: "빛나다" },
+                { english: "hefty", korean: "무거운" },
+                { english: "brittle", korean: "부서지기 쉬운" },
+                { english: "glib", korean: "(말이) 유창한" },
+                { english: "conducive to", korean: "-에 도움이 되는" },
+                { english: "in that ~", korean: "~라는 점에서" },
+                { english: "manipulate", korean: "조작하다" },
+                { english: "gloomy", korean: "우울한" },
+                { english: "exercise", korean: "(권력이나 권리 등을) 행사하다" },
+                { english: "mediator", korean: "중재인" },
+                { english: "muddle", korean: "뒤섞다" },
+                { english: "last", korean: "지속하다" },
+                { english: "fluctuate", korean: "요동치다" },
+                { english: "groundwork", korean: "토대" },
+                { english: "gamut", korean: "전 범위" },
+                { english: "muff", korean: "실수(하다)" },
+                { english: "melee", korean: "난투극" },
+                { english: "fragile", korean: "연약한" },
+                { english: "advertent", korean: "주의하는, 유의하는" },
+                { english: "leafy", korean: "잎이 많은" },
+                { english: "magnate", korean: "거물급 인사" },
+                { english: "generic", korean: "일반적인" },
+                { english: "plausible", korean: "그럴싸한, 그럴듯한" },
+                { english: "poverty-ridden", korean: "가난에 찌든" },
+                { english: "missive", korean: "(장황한) 공문서" },
+                { english: "protein", korean: "단백질" },
+                { english: "mistreat", korean: "학대하다" },
+                { english: "rejuvenate", korean: "다시 젊게 만들다" },
+                { english: "mogul", korean: "거물(巨物)" },
+                { english: "relevant", korean: "관련 있는 중요한" },
+                { english: "momentary", korean: "순간적인" },
+                { english: "restive", korean: "불안정한" },
+                { english: "monochromatic", korean: "단색의" },
+                { english: "sabotage", korean: "방해하다 파괴하다" },
+                { english: "moonlight", korean: "부업(副業)을 하다" },
+                { english: "skeletal", korean: "뼈의" },
+                { english: "mortician", korean: "장의사" },
+                { english: "lukewarm", korean: "미지근한" },
+                { english: "stiffness", korean: "경직" },
+                { english: "treatment", korean: "치료" },
+                { english: "mothball", korean: "잘 보관해 두다" },
+                { english: "abstinent", korean: "금욕적인" },
+                { english: "malediction", korean: "저주" },
+                { english: "malefactor", korean: "악인(惡人)" },
+                { english: "mercenary", korean: "용병(傭兵); 고용(雇用)된" },
+                { english: "inmate", korean: "수감자" },
+                { english: "neophyte", korean: "초보자" },
+                { english: "methodical", korean: "질서 있는" },
+                { english: "malfeasance", korean: "위법행위" },
+                { english: "malfunction", korean: "오작동" },
+                { english: "malignant", korean: "악성의" },
+                { english: "malnutrition", korean: "영양실조" }
+            ],
+            14: [
+                { english: "aloof", korean: "무관심한, 초연한" },
+                { english: "gargantuan", korean: "거대한" },
+                { english: "spectacle", korean: "멋진 관경: (복수형태로) 안경" },
+                { english: "untenable", korean: "유지할 수 없는" },
+                { english: "getaway", korean: "도주" },
+                { english: "inopportune", korean: "시의적절하지 않은" },
+                { english: "malicious", korean: "사악한" },
+                { english: "altar", korean: "제단, 제대" },
+                { english: "get-tough", korean: "강인한" },
+                { english: "hangover", korean: "숙취; 잔존물" },
+                { english: "manacle", korean: "수갑(을 채우다)" },
+                { english: "apprehend", korean: "체포하다: 염려하다: 이해하다" },
+                { english: "gloat", korean: "고소한 듯 바라보다" },
+                { english: "hard-line", korean: "강경파(强硬派)의" },
+                { english: "exonerate", korean: "면제해주다: 혐의를 벗겨주다" },
+                { english: "outdated", korean: "구식의" },
+                { english: "tenant", korean: "세입자" },
+                { english: "unfathomable", korean: "이해할 수 없는" },
+                { english: "gut", korean: "배짱, 용기" },
+                { english: "hail", korean: "환영하다: (from) 출신이다" },
+                { english: "nab", korean: "체포하다" },
+                { english: "inscrutable", korean: "헤아리기 어려운" },
+                { english: "ascetic", korean: "금욕(주의)의" },
+                { english: "manhunt", korean: "추적" },
+                { english: "heinous", korean: "극악무도한" },
+                { english: "keel", korean: "전복(顛覆)하다 실패하다" },
+                { english: "landlord", korean: "집주인" },
+                { english: "gorge", korean: "게걸스레 먹다: 협곡" },
+                { english: "behemoth", korean: "거대한 것" },
+                { english: "heir apparent", korean: "유력한 후계자" },
+                { english: "exotic", korean: "이국적인; 색다른" },
+                { english: "meddle", korean: "개입하다. 참견하다" },
+                { english: "hideous", korean: "무시무시한" },
+                { english: "catch-22", korean: "진퇴양난의" },
+                { english: "mediocre", korean: "보통 밖에 안 되는; 평범한" },
+                { english: "grandiloquence", korean: "허풍: 큰소리" },
+                { english: "chicanery", korean: "거짓" },
+                { english: "expatriate", korean: "국외로 추방하다 해외이주자" },
+                { english: "megrim", korean: "편두통" },
+                { english: "intrinsic", korean: "본질적인" },
+                { english: "negate", korean: "무효로 하다" },
+                { english: "classify", korean: "분류하다" },
+                { english: "grasp", korean: "꽉 잡다: 완전히 이해하다" },
+                { english: "meningitis", korean: "뇌수막염" },
+                { english: "credulous", korean: "쉽사리 믿는, 잘 속는" },
+                { english: "invariably", korean: "항상" },
+                { english: "extrinsic", korean: "외생적인" },
+                { english: "hideout", korean: "은신처" },
+                { english: "preside", korean: "통솔하다: 주재(主宰)하다" },
+                { english: "nugget", korean: "덩어리" },
+                { english: "obliterate", korean: "말살하다" },
+                { english: "inviolable", korean: "침범할 수 없는" },
+                { english: "flamboyance", korean: "화려함" },
+                { english: "robe", korean: "긴옷" },
+                { english: "scrutable", korean: "(암호를) 판독할 수 있는" },
+                { english: "mitigate", korean: "완화하다" },
+                { english: "flake", korean: "얇은 조각" },
+                { english: "grating", korean: "삐걱 소리의 거슬리는" },
+                { english: "meticulous", korean: "지나치게 세심한 지나치게 신중한" },
+                { english: "hijack", korean: "납치하다" },
+                { english: "inclemency", korean: "무자비" },
+                { english: "gumshoe", korean: "탐정" },
+                { english: "curb", korean: "연석(緣石); 억제하다" },
+                { english: "obloquy", korean: "비방" },
+                { english: "microcosm", korean: "축소판" },
+                { english: "grind to a halt", korean: "끽 소리 내며 정지하다" },
+                { english: "decade", korean: "10년" },
+                { english: "infiltrate", korean: "침투하다: 스며들다" },
+                { english: "deity", korean: "신(神)" },
+                { english: "momentous", korean: "중요한" },
+                { english: "guile", korean: "간교한 속임수" },
+                { english: "ingenuous", korean: "솔직한 성실한" },
+                { english: "dishearten", korean: "낙담시키다" },
+                { english: "momentum", korean: "힘" },
+                { english: "grueling", korean: "녹초로 만드는" },
+                { english: "obscene", korean: "음란한" },
+                { english: "innate", korean: "타고난, 선천적인" },
+                { english: "eerie", korean: "섬뜩한" },
+                { english: "obstetrics", korean: "산과(産科)" },
+                { english: "mortgage", korean: "저당 잡히다" },
+                { english: "embellish", korean: "꾸미다: 윤색(潤色)하다" },
+                { english: "mull", korean: "망치다: 곰곰이 생각하다" },
+                { english: "embroidery", korean: "자수, 수예" },
+                { english: "mumble", korean: "중얼거리다; 우물우물 씹다" },
+                { english: "enactment", korean: "법제화" },
+                { english: "muzzle", korean: "함구령(緘口令)을 내리다" },
+                { english: "hands-off", korean: "불간섭주의의" },
+                { english: "opportune", korean: "시의적절(時宜適切)한" },
+                { english: "ennui", korean: "권태(倦怠)" },
+                { english: "maneuver", korean: "움직임, 책략 조작하다" },
+                { english: "white elephant", korean: "무용지물" },
+                { english: "hawkish", korean: "매파의: 강경한" },
+                { english: "dovish", korean: "온건한; 비둘기파의" },
+                { english: "dinosaur", korean: "공룡: 시대의 변화에 뒤처진 존재" },
+                { english: "giant", korean: "거인; 대형 선두기업" },
+                { english: "albatross", korean: "신천홍: 골칫거리" }
+            ],
+            15: [
+                { english: "hair-splitting", korean: "사소한 것을 따지는" },
+                { english: "austere", korean: "꾸밈없는 근엄한 금욕적인" },
+                { english: "moribund", korean: "죽어가는" },
+                { english: "confine A to B", korean: "A를 B에 제한하다" },
+                { english: "hair-trigger", korean: "일촉즉발(一觸即發)의" },
+                { english: "banal", korean: "진부한" },
+                { english: "upon doing A", korean: "A하자마자" },
+                { english: "distinguished", korean: "유명한 눈에 띄는" },
+                { english: "mundane", korean: "세속적인" },
+                { english: "half-hearted", korean: "마지못한" },
+                { english: "homage", korean: "존경" },
+                { english: "lucrative", korean: "이윤이 남는" },
+                { english: "homicide", korean: "살인행위" },
+                { english: "ludicrous", korean: "우스꽝스런" },
+                { english: "be up to A", korean: "A에 달려있다: A를 감당하다" },
+                { english: "hamstring", korean: "무력하게 만들다" },
+                { english: "clumsy", korean: "서툰" },
+                { english: "hapless", korean: "불운한" },
+                { english: "spoof", korean: "속임수" },
+                { english: "inveigle", korean: "감언으로 속이다" },
+                { english: "stopgap measure", korean: "미봉책" },
+                { english: "hemorrhage", korean: "출혈" },
+                { english: "subject A to B", korean: "A를 B에 복종시키다" },
+                { english: "irate", korean: "격분한" },
+                { english: "sustain", korean: "견뎌내다: 상처를 입다" },
+                { english: "skim", korean: "대충 훑어보다: 걷어내다" },
+                { english: "venomous", korean: "독이 있는 앙심에 찬" },
+                { english: "so to speak", korean: "소위 말해" },
+                { english: "eventually", korean: "결국" },
+                { english: "harrow", korean: "못살게 굴다" },
+                { english: "fame", korean: "명성" },
+                { english: "haughty", korean: "거만한" },
+                { english: "frown", korean: "눈살을 찌푸리다" },
+                { english: "haute", korean: "고급의 상류사회의" },
+                { english: "namely", korean: "즉" },
+                { english: "nutshell", korean: "견과류의 껍질 하찮은 것" },
+                { english: "in a nutshell", korean: "간단히 말하자면" },
+                { english: "nefarious", korean: "사악한" },
+                { english: "haven", korean: "도피처" },
+                { english: "novel", korean: "새로운" },
+                { english: "refer A to B", korean: "A를 B로 보내다" },
+                { english: "refer to A as B", korean: "A를 B로 부르다" },
+                { english: "refer to A", korean: "A에 관해 언급하다" },
+                { english: "hidebound", korean: "편협한" },
+                { english: "line-item veto", korean: "부분적 거부권" },
+                { english: "towering", korean: "높은" },
+                { english: "highflier", korean: "야심가" },
+                { english: "long-winded", korean: "장황한" },
+                { english: "hinge on", korean: "달려있다" },
+                { english: "loose", korean: "느슨한" },
+                { english: "hinterland", korean: "낙후지역" },
+                { english: "lopsided", korean: "비뚤어진" },
+                { english: "hogwash", korean: "허풍" },
+                { english: "lucid", korean: "명료한" },
+                { english: "mar", korean: "망치다" },
+                { english: "lurch", korean: "기울어짐, 경향(傾向)" },
+                { english: "herald", korean: "이미 알리다: 전령사(傳令士)" },
+                { english: "sybarite", korean: "쾌락주의자" },
+                { english: "itinerant", korean: "떠돌아다니는, 순회하는" },
+                { english: "vanishing", korean: "사라지는" },
+                { english: "dither", korean: "우유부단하게 행동하다" },
+                { english: "nuke", korean: "원자력(무기)" },
+                { english: "harangue", korean: "열변(熱辯)을 토하다" },
+                { english: "haunt", korean: "귀신 씌우다" },
+                { english: "nail down", korean: "확정짓다" },
+                { english: "sinew", korean: "힘줄: 정력" },
+                { english: "nurture", korean: "육성하다" },
+                { english: "inaugurate", korean: "취임하게 하다: 개시를 알리다" },
+                { english: "headstrong", korean: "완고한" },
+                { english: "pastor", korean: "목사" },
+                { english: "indelible", korean: "잊을 수 없는 지워지지 않는" },
+                { english: "peruse", korean: "정독(精讀)하다. 면밀히 읽다" },
+                { english: "hectic", korean: "열띤" },
+                { english: "platitudinous", korean: "(말 등이) 평범한" },
+                { english: "insipid", korean: "싱거운: 활기 없는" },
+                { english: "pupil", korean: "학생: 동공" },
+                { english: "hedonistic", korean: "쾌락주의의" },
+                { english: "quackery", korean: "사기꾼" },
+                { english: "viz", korean: "즉" },
+                { english: "irascible", korean: "화를 잘 내는 성마른" },
+                { english: "quip", korean: "빈정거리다" },
+                { english: "heel", korean: "충실히 따르다" },
+                { english: "the chips are down", korean: "상황이 불리해지다" },
+                { english: "Herculean", korean: "거대한" },
+                { english: "thrash", korean: "채찍으로 때리다: 패배시키다" },
+                { english: "work", korean: "효과를 발휘하다" },
+                { english: "latent", korean: "잠재(潛在)적" },
+                { english: "timid", korean: "소심한" },
+                { english: "heresy", korean: "이교도" },
+                { english: "letup", korean: "감소, 정지" },
+                { english: "to wit", korean: "즉" },
+                { english: "hew to", korean: "고수하다" },
+                { english: "lewd", korean: "외설적인" }
+            ],
+            16: [
+                { english: "take place", korean: "발생하다" },
+                { english: "lynch", korean: "린치를 가하다" },
+                { english: "kindle", korean: "불을 밝히다" },
+                { english: "leukemia", korean: "백혈병" },
+                { english: "incursion", korean: "침입" },
+                { english: "detergent", korean: "세제" },
+                { english: "infatuate", korean: "얼빠지게 만들다 매혹하다" },
+                { english: "level-headed", korean: "분별력이 있는" },
+                { english: "exhume", korean: "발굴하다" },
+                { english: "infidelity", korean: "부정, 불륜(不倫)" },
+                { english: "get away with A", korean: "A를 저지르고 무사히 달아나다" },
+                { english: "hiatus", korean: "중단, (단절된) 틈" },
+                { english: "mandatory", korean: "의무의" },
+                { english: "languid", korean: "나태한" },
+                { english: "integrity", korean: "성실: 충실(도)" },
+                { english: "harness", korean: "이용하다" },
+                { english: "laissez-faire", korean: "자유방임주의(自由放任主義)의" },
+                { english: "half-measure", korean: "미봉책" },
+                { english: "insouciant", korean: "무관심한; 태평한" },
+                { english: "kickback", korean: "뇌물" },
+                { english: "lackadaisical", korean: "열의(熱意) 없는" },
+                { english: "loophole", korean: "허점" },
+                { english: "stain", korean: "얼룩" },
+                { english: "loquacious", korean: "요란한, 수다스러운" },
+                { english: "stem A", korean: "A를 차단하다" },
+                { english: "theft", korean: "절도" },
+                { english: "magnanimous", korean: "도량이 넓은" },
+                { english: "hamper", korean: "방해하다" },
+                { english: "live up to", korean: "부응하다" },
+                { english: "manslaughter", korean: "살인" },
+                { english: "hooligan", korean: "무뢰한(無賴漢)" },
+                { english: "layoff", korean: "해고" },
+                { english: "marginal", korean: "한계의 미미한" },
+                { english: "hot water", korean: "곤란" },
+                { english: "marshal", korean: "보안관" },
+                { english: "legally binding", korean: "법적구속력이 있는" },
+                { english: "as follows", korean: "다음과 같은" },
+                { english: "martial", korean: "군대(軍隊)의; 무력(武力)의" },
+                { english: "put simply", korean: "간단히 말해 (to put it simple)" },
+                { english: "lob", korean: "곡사탄도(曲射彈道)로 발사하다" },
+                { english: "rub", korean: "문지르다" },
+                { english: "logjam", korean: "교착(상태)" },
+                { english: "lousy", korean: "비참한" },
+                { english: "internecine", korean: "내분(内憤)의, 동족상잔(동족상잔)의" },
+                { english: "kingpin", korean: "주요인물" },
+                { english: "unctuous", korean: "매끄러운: 상냥한" },
+                { english: "make for", korean: "야기하다" },
+                { english: "haul", korean: "운반하다: 기간" },
+                { english: "interrogation", korean: "심문(審問), 취조(取調)" },
+                { english: "make sure that ~", korean: "~를 분명히 하다" },
+                { english: "heavy-duty", korean: "강력한" },
+                { english: "invective", korean: "비난, 욕설" },
+                { english: "knotty", korean: "해결이 곤란한" },
+                { english: "unflagging", korean: "불굴의, 지치지 않는" },
+                { english: "landfill", korean: "매립(하다)" },
+                { english: "heyday", korean: "전성기" },
+                { english: "iota", korean: "극소량" },
+                { english: "hubris", korean: "오만" },
+                { english: "meager", korean: "빈약한" },
+                { english: "belie", korean: "거짓임을 보여주다" },
+                { english: "soak", korean: "젖게 만들다" },
+                { english: "longitude", korean: "경도" },
+                { english: "solvent", korean: "용해제: 지불능력이 있는" },
+                { english: "lot", korean: "운명" },
+                { english: "stem from A", korean: "A로부터 유래하다" },
+                { english: "metaphor", korean: "은유" },
+                { english: "leverage", korean: "세력: 차입경영하다: 지렛대" },
+                { english: "humbug", korean: "속임수" },
+                { english: "brusque", korean: "퉁명스러운" },
+                { english: "hustler", korean: "사기꾼" },
+                { english: "caustic", korean: "신랄한" },
+                { english: "libel", korean: "모욕하다" },
+                { english: "improvise", korean: "즉석에서 하다" },
+                { english: "come at one's heel", korean: "뒤따르다" },
+                { english: "impunity", korean: "처벌받지 않음" },
+                { english: "legion", korean: "무수한; 연대(聯隊)" },
+                { english: "confront", korean: "대면하다" },
+                { english: "incarcerate", korean: "투옥하다" },
+                { english: "cul-de-sac", korean: "막다른 골목; 진퇴양난" },
+                { english: "incinerator", korean: "소각로" },
+                { english: "lethargy", korean: "무기력증" },
+                { english: "homophobia", korean: "동성애자 혐오증" },
+                { english: "lay", korean: "평이한; 평범한" },
+                { english: "hubbub", korean: "소음" },
+                { english: "maverick", korean: "독불장군: 이단자" },
+                { english: "authorities", korean: "당국: 권위" },
+                { english: "nominate", korean: "지명하다" },
+                { english: "lift", korean: "제거하다: 들어 올리다" },
+                { english: "nudge", korean: "가볍게 밀다" },
+                { english: "limelight", korean: "세인(世人)들의 이목; 석회광" },
+                { english: "occasionally", korean: "종종" },
+                { english: "liquidation", korean: "(부채의) 청산; 파산; 제거" },
+                { english: "offend", korean: "불쾌하게 만들다" },
+                { english: "litigation", korean: "소송" },
+                { english: "peer pressure", korean: "동료에게 느끼는 압박감" }
+            ],
+            17: [
+                { english: "be saddled with A", korean: "A라는 부담을 겪다" },
+                { english: "saddle", korean: "안장(鞍裝); 부담을 지우다" },
+                { english: "jitter", korean: "초조하게 만들다)" },
+                { english: "languish", korean: "쇠약해지다" },
+                { english: "champion", korean: "지지하다" },
+                { english: "reverence", korean: "존경" },
+                { english: "jockey for", korean: "차지하려고 애쓰다" },
+                { english: "lash out at", korean: "비난하다" },
+                { english: "alter", korean: "변화시키다" },
+                { english: "testy", korean: "고약한" },
+                { english: "interim", korean: "임시의" },
+                { english: "glaze", korean: "광택" },
+                { english: "leeway", korean: "자유재량(自由裁量)" },
+                { english: "apparent", korean: "외견상의; 분명한" },
+                { english: "international waters", korean: "공해(公海)" },
+                { english: "enfeeble", korean: "약하게 만들다" },
+                { english: "ingratiate", korean: "환심을 사다. 영합하다" },
+                { english: "circumscribed", korean: "제한적인" },
+                { english: "inveterate", korean: "상습적인" },
+                { english: "off the hook", korean: "위기에서 벗어난" },
+                { english: "murky", korean: "어두운" },
+                { english: "peel", korean: "껍질이 벗겨지다" },
+                { english: "gull", korean: "잘 속는 사람: 속이다" },
+                { english: "malaise", korean: "(사회적) 병폐; 으스스한 느낌" },
+                { english: "be at large", korean: "도주 중인" },
+                { english: "hot-button", korean: "민감한" },
+                { english: "malevolent", korean: "악의 있는" },
+                { english: "intimate", korean: "친밀한" },
+                { english: "jovial", korean: "명랑한" },
+                { english: "kudos", korean: "명성" },
+                { english: "malleable", korean: "유순한; 연성(延性)의" },
+                { english: "iron-handed", korean: "압제적(壓制的)인" },
+                { english: "stand for", korean: "의미하다" },
+                { english: "digression", korean: "탈선" },
+                { english: "itch", korean: "열망(하다); 가렵다: 가려움" },
+                { english: "invincible", korean: "무적(無敵)의" },
+                { english: "mutant", korean: "돌연변이" },
+                { english: "necessitate A", korean: "A를 필요로 하다" },
+                { english: "contract", korean: "수축하다: 질병에 걸리다" },
+                { english: "crusade", korean: "십자군 운동; 캠페인을 벌이다" },
+                { english: "ire", korean: "화, 분노" },
+                { english: "deprivation", korean: "박탈" },
+                { english: "lackluster", korean: "열의 없는" },
+                { english: "accord", korean: "합의, 조화" },
+                { english: "take effect", korean: "발효하다" },
+                { english: "perennial", korean: "다년생의 연속적인" },
+                { english: "elbow room", korean: "자유재량(自由裁量)" },
+                { english: "phenomenal", korean: "현상(現象)의 천재(天才)의" },
+                { english: "inhume", korean: "매장하다" },
+                { english: "accountant", korean: "회계사" },
+                { english: "fatuous", korean: "얼빠진: 실체가 없는, 환영(幻영)의" },
+                { english: "insurgence", korean: "반란, 폭동" },
+                { english: "affluent", korean: "부유한" },
+                { english: "jettison", korean: "버리다" },
+                { english: "laggard", korean: "느린" },
+                { english: "jihad", korean: "이슬람 성전(聖戰), 지하드" },
+                { english: "florid", korean: "화려한" },
+                { english: "interfere", korean: "간섭하다" },
+                { english: "replete", korean: "가득 찬" },
+                { english: "jubilant", korean: "환호하는" },
+                { english: "be on the lam", korean: "도주 중인" },
+                { english: "juggle", korean: "(어려운 일들을) 절묘하게 다루다" },
+                { english: "mirth", korean: "환희" },
+                { english: "niche market", korean: "틈새시장" },
+                { english: "transitory", korean: "일시적; 허망한" },
+                { english: "housecleaning", korean: "숙청(肅淸)" },
+                { english: "junta", korean: "군사정부" },
+                { english: "middle-of-the-road", korean: "중도파의" },
+                { english: "intractable", korean: "다루기 어려운" },
+                { english: "minuscule", korean: "아주 작은" },
+                { english: "jurisdiction", korean: "사법권; 사법적 관할지역" },
+                { english: "trepidation", korean: "공포, 전율" },
+                { english: "intransigent", korean: "고집스러운" },
+                { english: "blister", korean: "물집이 잡히다" },
+                { english: "keystone", korean: "요지" },
+                { english: "intrepid", korean: "용맹스러운" },
+                { english: "bloom", korean: "꽃피우다" },
+                { english: "inundate", korean: "침수시키다" },
+                { english: "legislative", korean: "입법(立法)의" },
+                { english: "fugacious", korean: "덧없는 휘발성의 빨리 시드는" },
+                { english: "liberal arts", korean: "교양, 인문학" },
+                { english: "malady", korean: "질병" },
+                { english: "jolt", korean: "충격(을 주다)" },
+                { english: "yield", korean: "밀려나다: 양보하다" },
+                { english: "digressive", korean: "정도에서 이탈한" },
+                { english: "watershed", korean: "분수령" },
+                { english: "sweeping", korean: "전면적인" },
+                { english: "jackpot", korean: "횡재" },
+                { english: "discretion", korean: "자유재량(自由裁量)" },
+                { english: "jam", korean: "교란하다" },
+                { english: "disperse", korean: "흩뜨리다" },
+                { english: "irreparable", korean: "되돌릴 수 없는 (→ repair)" },
+                { english: "irreversible", korean: "되돌릴 수 없는 ( reverse)" },
+                { english: "irrevocable", korean: "되돌릴 수 없는 (→ revoke)" },
+                { english: "indigenous", korean: "토착(土着)의, 원주민의" },
+                { english: "indignant", korean: "분노한" },
+                { english: "ingenious*", korean: "독창적인" },
+                { english: "ingenuous*", korean: "솔직한 성실한" },
+                { english: "Jim Crow", korean: "흑인에 대한 인종 차별" },
+                { english: "Crow Jim", korean: "백인에 대한 인종 차별" }
+            ],
+            18: [
+                { english: "ceaseless", korean: "끊임없는" },
+                { english: "adulterate", korean: "불순물을 섞다" },
+                { english: "tutelage", korean: "지도, 후원" },
+                { english: "bulge", korean: "부풀다" },
+                { english: "resolute", korean: "의지가 확고한" },
+                { english: "prescient", korean: "선견지명이 있는" },
+                { english: "alteration", korean: "변화: (의류) 수선" },
+                { english: "fertile", korean: "비옥한" },
+                { english: "predominance", korean: "우세" },
+                { english: "clarification", korean: "정화" },
+                { english: "flinty", korean: "완고한" },
+                { english: "valor", korean: "용맹" },
+                { english: "weary", korean: "싫증난" },
+                { english: "valorous", korean: "씩씩한, 용감한" },
+                { english: "infectious", korean: "전염성의" },
+                { english: "budding", korean: "싹트는" },
+                { english: "godsend", korean: "뜻밖의 횡재" },
+                { english: "humiliate", korean: "굴욕감을 주다" },
+                { english: "hyperbolic", korean: "과장법의" },
+                { english: "acclimate", korean: "적응시키다" },
+                { english: "render A-(상태)", korean: "A를 (-한) 상태로 만들다" },
+                { english: "acclivity", korean: "오르막 경사" },
+                { english: "pathetic", korean: "애처로운; 한심한" },
+                { english: "sequester", korean: "격리시키다: 압수하다" },
+                { english: "compensate A for B", korean: "A에게 B에 대해 보상하다" },
+                { english: "blaspheme", korean: "신성 모독적인 발언을 하다" },
+                { english: "perilous", korean: "위험한" },
+                { english: "abysmal", korean: "심연의: 헤아릴 수 없는" },
+                { english: "codify", korean: "법제화하다: 분류하다" },
+                { english: "attendee", korean: "참석자" },
+                { english: "illusory", korean: "환상의" },
+                { english: "atrophy", korean: "쇠약해지다" },
+                { english: "derelict", korean: "태만의 버려진" },
+                { english: "redundant", korean: "불필요하게 많은" },
+                { english: "blue-ribbon", korean: "최우수의" },
+                { english: "accede", korean: "동의하다: 가입하다" },
+                { english: "lax", korean: "느슨한" },
+                { english: "coin", korean: "어휘를 만들다 화폐를 만들다" },
+                { english: "brazen", korean: "뻔뻔한" },
+                { english: "peevish", korean: "화내는" },
+                { english: "abstract", korean: "추상적 추출하다" },
+                { english: "crony", korean: "동료" },
+                { english: "curtail", korean: "축소하다" },
+                { english: "jetlag", korean: "시차에 의한 불편함" },
+                { english: "adore", korean: "흠모하다" },
+                { english: "placid", korean: "평온한" },
+                { english: "rapture", korean: "환희: 휴거(携 )" },
+                { english: "given A", korean: "A를 감안해 볼 때" },
+                { english: "candid", korean: "솔직한" },
+                { english: "rebuff", korean: "거절하다" },
+                { english: "explicit", korean: "노골적인" },
+                { english: "betray", korean: "폭로하다: 배신하다" },
+                { english: "abundant", korean: "풍부한" },
+                { english: "remotely possible", korean: "가능성이 거의 없는" },
+                { english: "enthrall", korean: "매혹시키다: 노예로 만들다" },
+                { english: "bogus", korean: "가짜의" },
+                { english: "anathema", korean: "저주" },
+                { english: "impeccable", korean: "결함 없는" },
+                { english: "leave A -(상태)", korean: "A를 (-한) 상태로 만들다" },
+                { english: "ornate", korean: "화려하게 장식된" },
+                { english: "pacific", korean: "평온한" },
+                { english: "draconian", korean: "가혹한" },
+                { english: "anomalous", korean: "변칙적인" },
+                { english: "whittle", korean: "삭감하다" },
+                { english: "astute", korean: "빈틈없는" },
+                { english: "collaborate", korean: "협력하다" },
+                { english: "politically correct", korean: "진보적인 성향을 지닌" },
+                { english: "wordy", korean: "말이 많은" },
+                { english: "ordnance", korean: "군수품" },
+                { english: "skimp", korean: "지나치게 검소하다" },
+                { english: "addiction", korean: "중독" },
+                { english: "subsidy", korean: "보조금" },
+                { english: "adhere to", korean: "고수하다" },
+                { english: "tariff", korean: "관세" },
+                { english: "exacting", korean: "가혹한" },
+                { english: "immoral", korean: "비도덕적인" },
+                { english: "feast", korean: "배불리 먹다" },
+                { english: "scam", korean: "사기" },
+                { english: "flimsy", korean: "박약한" },
+                { english: "impervious", korean: "침투가 불가능한" },
+                { english: "topple", korean: "전복시키다" },
+                { english: "drowsy", korean: "졸리는" },
+                { english: "bureaucracy", korean: "관료주의" },
+                { english: "enchant", korean: "매혹하다" },
+                { english: "altercation", korean: "반박, 논쟁" },
+                { english: "impress", korean: "큰 인상을 주다" },
+                { english: "acrid", korean: "신랄한" },
+                { english: "scapegoat", korean: "희생양" },
+                { english: "cleavage", korean: "분할, 분열" },
+                { english: "voracious", korean: "탐욕의" },
+                { english: "bustling", korean: "부산스러운" },
+                { english: "addict", korean: "중독되게 만들다: 중독자" },
+                { english: "cleaver", korean: "식칼" },
+                { english: "ordinance", korean: "법령, 조례(條例)" },
+                { english: "proviso", korean: "단서" }
+            ],
+            19: [
+                { english: "initiate", korean: "시작하다: 가르치다 입문시키다" },
+                { english: "naive", korean: "세상물정 모르는 잘 속는" },
+                { english: "pariah", korean: "추방된 자" },
+                { english: "upstart", korean: "벼락부자" },
+                { english: "ratify", korean: "비준하다" },
+                { english: "sagacious", korean: "현명한" },
+                { english: "confluence", korean: "합류점" },
+                { english: "adept", korean: "능숙한" },
+                { english: "enormous", korean: "엄청난" },
+                { english: "germane to", korean: "관련된" },
+                { english: "sapient", korean: "아주 지적인, 박식한" },
+                { english: "convincing", korean: "설득력 있는" },
+                { english: "expedient", korean: "편리한; 편법의" },
+                { english: "greedy", korean: "탐욕의" },
+                { english: "dilate", korean: "팽창하다" },
+                { english: "slight", korean: "모욕하다" },
+                { english: "wheeler-dealer", korean: "수완가" },
+                { english: "lugubrious", korean: "침울한" },
+                { english: "pine", korean: "갈망하다" },
+                { english: "rout", korean: "참패시키다" },
+                { english: "convoluted", korean: "매우 복잡한" },
+                { english: "scurvy", korean: "상스러운: 괴혈병" },
+                { english: "diverge", korean: "발산(發散)하다" },
+                { english: "poignant", korean: "가슴에 사무치는" },
+                { english: "sluggish", korean: "불경기의" },
+                { english: "rapport", korean: "조화로운 관계: 신뢰 관계" },
+                { english: "cripple", korean: "큰 피해를 입히다" },
+                { english: "pitfall", korean: "함정" },
+                { english: "rump", korean: "잔당(殘黨)" },
+                { english: "divest A of B", korean: "A에게서 B를 분리하다" },
+                { english: "seclusive", korean: "은둔적인" },
+                { english: "grill", korean: "석쇠에 굽다: 혹평하다" },
+                { english: "second to none", korean: "최고의" },
+                { english: "from rags to riches", korean: "자수성가(의)" },
+                { english: "congruent", korean: "조화로운" },
+                { english: "equilibrium", korean: "평형" },
+                { english: "vanquish", korean: "정복하다" },
+                { english: "anchorite", korean: "은둔자" },
+                { english: "regale", korean: "배불리 먹다" },
+                { english: "salubrious", korean: "몸에 좋은 건전한" },
+                { english: "flinching", korean: "(두려움에) 움찔거리는" },
+                { english: "conjecture", korean: "추측하다" },
+                { english: "air raid", korean: "공습(空襲)" },
+                { english: "ration", korean: "배급하다" },
+                { english: "sectarian", korean: "당파적인" },
+                { english: "break out", korean: "발발하다. 발생하다" },
+                { english: "euthanasia", korean: "안락사" },
+                { english: "insidious", korean: "잠행성의" },
+                { english: "phrenic", korean: "정신활동의, 심적인" },
+                { english: "constituency", korean: "선거구" },
+                { english: "constituent", korean: "선거구민" },
+                { english: "contingency plan", korean: "위기 대비 대책" },
+                { english: "contingency", korean: "우발(偶發)" },
+                { english: "appraiser", korean: "감정평가사(鑑定評價士)" },
+                { english: "skirt", korean: "회피하다" },
+                { english: "jejune", korean: "재미없는; 미숙한" },
+                { english: "salvo", korean: "일제사격; 맹공" },
+                { english: "rebut", korean: "반박하다" },
+                { english: "waive", korean: "(권리를) 포기하다" },
+                { english: "lissome", korean: "유연한" },
+                { english: "pith", korean: "핵심" },
+                { english: "converge", korean: "수렴(收斂)하다" },
+                { english: "deter", korean: "단념시키다" },
+                { english: "smother", korean: "질식시키다" },
+                { english: "wield", korean: "휘두르다" },
+                { english: "crossfire", korean: "집중공세" },
+                { english: "provincial", korean: "제한적인" },
+                { english: "quarantine", korean: "격리하다" },
+                { english: "smug", korean: "의기양양한" },
+                { english: "crumble", korean: "무너지다" },
+                { english: "runner-up", korean: "차점자" },
+                { english: "dote", korean: "홀딱 빠지다" },
+                { english: "cue", korean: "신호, 힌트" },
+                { english: "downright", korean: "노골적인, 명백한; 철저히, 완전하게" },
+                { english: "cursory", korean: "조잡한, 엉성한" },
+                { english: "snare", korean: "올가미를 씌우다" },
+                { english: "extraterritoriality", korean: "치외법권(治外法權)" },
+                { english: "dumb-found", korean: "깜짝 놀라게 하다" },
+                { english: "collaborator", korean: "공동 제작자: 부역(附逆)(배신)자" },
+                { english: "quash", korean: "진압하다" },
+                { english: "somatic", korean: "몸의" },
+                { english: "effeminate", korean: "여성적인" },
+                { english: "bucolic", korean: "목가적인" },
+                { english: "rupture", korean: "파열시키다: 파열" },
+                { english: "strapped", korean: "돈이 궁한" },
+                { english: "defect", korean: "결점" },
+                { english: "query", korean: "질문(하다)" },
+                { english: "divulge", korean: "누설하다" },
+                { english: "acclaim A to B", korean: "A를 B의 덕분으로 보다" },
+                { english: "deliver the goods", korean: "약속을 지키다" },
+                { english: "subtlety", korean: "미묘함" },
+                { english: "wrestle with A", korean: "A로 씨름하다: A로 힘겨워하다" },
+                { english: "fan", korean: "부채질하다: 부추기다" },
+                { english: "heterogeneous", korean: "이질적인" },
+                { english: "homogeneous", korean: "동질적인" }
+            ],
+            20: [
+                { english: "unflinching", korean: "움찍거리지 않는, 단호한" },
+                { english: "stipulate", korean: "규정하다" },
+                { english: "reckless", korean: "무모한" },
+                { english: "symmetry", korean: "대칭" },
+                { english: "asymmetry", korean: "비대칭" },
+                { english: "disclose", korean: "밝히다" },
+                { english: "partisan", korean: "열혈당원, 빨치산" },
+                { english: "arcane", korean: "신비로운" },
+                { english: "rummage", korean: "샅샅이 뒤지다" },
+                { english: "pale in comparison", korean: "비교할 수준이 되지 못하다" },
+                { english: "adroit", korean: "능숙한" },
+                { english: "at times", korean: "때때로" },
+                { english: "wanton", korean: "방탕한" },
+                { english: "par", korean: "평균" },
+                { english: "pleonasm", korean: "용어법(冗語法): 장황한 말" },
+                { english: "antediluvian", korean: "대홍수 이전의 구식의" },
+                { english: "volatile", korean: "불안정한" },
+                { english: "parole", korean: "가석방" },
+                { english: "wont", korean: "경향이 있는" },
+                { english: "pliant", korean: "순응하는" },
+                { english: "double-bind", korean: "딜레마" },
+                { english: "stoic", korean: "금욕주의(자)" },
+                { english: "plot", korean: "음모" },
+                { english: "univocal", korean: "단일한" },
+                { english: "unimpeachable", korean: "무결점의" },
+                { english: "pomposity", korean: "거만한 언행; 과장된 언행; 화려함" },
+                { english: "sylvan", korean: "숲속의" },
+                { english: "precedent", korean: "선례" },
+                { english: "vagabond", korean: "방랑자" },
+                { english: "precinct", korean: "(경찰)관할구역: 선거구" },
+                { english: "versatile", korean: "다양한 능력을 지닌" },
+                { english: "proceeds", korean: "수입, 수익" },
+                { english: "attribute A to B", korean: "A를 B의 결과로 보다" },
+                { english: "untapped", korean: "미개발의" },
+                { english: "scant", korean: "아끼다: 부족한" },
+                { english: "around the clock", korean: "24시간 내내" },
+                { english: "slack", korean: "느슨한" },
+                { english: "manifold", korean: "다양한" },
+                { english: "worn-out", korean: "닳은" },
+                { english: "somnambulism", korean: "몽유병" },
+                { english: "atheistic", korean: "무신론의" },
+                { english: "nominee", korean: "지명된 사람, 지명자; 후보자" },
+                { english: "stern", korean: "엄격한" },
+                { english: "wipe out", korean: "일소(一掃)하다" },
+                { english: "rebellion", korean: "반란(군)" },
+                { english: "regressive", korean: "후퇴하는: 회귀(回歸)하는" },
+                { english: "submissive", korean: "굴복적인" },
+                { english: "rococo", korean: "로코코식의 지나치게 장식이 많은" },
+                { english: "pertinent", korean: "관련 있는" },
+                { english: "doyen", korean: "원로; 전문분야의 일인자" },
+                { english: "pester", korean: "괴롭히다" },
+                { english: "substance", korean: "내용물" },
+                { english: "rote", korean: "기계적 암기, 주입식 암기" },
+                { english: "flout", korean: "조롱하다" },
+                { english: "inertia", korean: "관성(慣性); 무력함; 나태" },
+                { english: "leak", korean: "누출되다" },
+                { english: "tactic", korean: "전술" },
+                { english: "match", korean: "상대" },
+                { english: "antifungal", korean: "항진균제" },
+                { english: "scathe", korean: "혹평하다" },
+                { english: "plaintive", korean: "애처로운" },
+                { english: "unanimous", korean: "만장일치의" },
+                { english: "nay", korean: "반대(투표)" },
+                { english: "pillory", korean: "형틀 (칼); 웃음거리로 만들다: 강력히 비판하다" },
+                { english: "novelty", korean: "새로운 것" },
+                { english: "ostracize", korean: "추방하다" },
+                { english: "tether", korean: "속박하다" },
+                { english: "vestal", korean: "순결한" },
+                { english: "prescription drug", korean: "처방전 약" },
+                { english: "over-the-counter drug", korean: "비처방전 약" },
+                { english: "generic drug", korean: "비처방전 약" },
+                { english: "tyro", korean: "초보" },
+                { english: "augur well", korean: "조짐이 좋다" },
+                { english: "augur ill", korean: "조짐이 좋지 않다" },
+                { english: "bode well", korean: "조짐이 좋다" },
+                { english: "bode ill", korean: "조짐이 좋지 않다" },
+                { english: "folly", korean: "어리석음" },
+                { english: "in circulation", korean: "유통 중인" },
+                { english: "serendipity", korean: "운 좋은 발견; 뜻밖의 재미" },
+                { english: "by fits and starts", korean: "불연속적으로 발작적으로" },
+                { english: "shrivel", korean: "쪼글쪼글해지다" },
+                { english: "conscientious", korean: "양심적인" },
+                { english: "sinewy", korean: "근육질의" },
+                { english: "parameter", korean: "변수" },
+                { english: "sleazy", korean: "(직물이) 얄팍한" },
+                { english: "currency", korean: "화폐" },
+                { english: "discharge", korean: "이행하다: 퇴역시키다: 퇴원시키다" }
+            ],
+        };
+
+        let currentCardIndex = 0;
+        let sessionWords = [];
+        let currentChapter = 1; // 초기 챕터를 1로 설정
+
+        // DOM Elements
+        const flashcardEl = document.getElementById('flashcard');
+        const cardFrontTextEl = document.getElementById('card-front-text');
+        const cardBackTextEl = document.getElementById('card-back-text');
+        const flashcardViewEl = document.getElementById('flashcard-view');
+        const quizViewEl = document.getElementById('quiz-view');
+        const completionViewEl = document.getElementById('completion-view');
+        const progressIndicatorEl = document.getElementById('progress-indicator');
+        const appTitleEl = document.getElementById('app-title');
+        const chapterTitleEl = document.getElementById('chapter-title');
+        const controlsEl = document.getElementById('controls');
+        const extraFeaturesEl = document.getElementById('extra-features');
+        const classificationButtonsEl = document.getElementById('classification-buttons');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const generateExampleBtn = document.getElementById('generate-example-btn');
+        const generateQuizBtn = document.getElementById('generate-quiz-btn');
+        const aiContentContainerEl = document.getElementById('ai-content-container');
+        const markKnownBtn = document.getElementById('mark-known-btn');
+        const markUnknownBtn = document.getElementById('mark-unknown-btn');
+        const menuBtn = document.getElementById('menu-btn');
+        const chapterMenuModal = document.getElementById('chapter-menu-modal');
+        const chapterListEl = document.getElementById('chapter-list');
+        const closeMenuBtn = document.getElementById('close-menu-btn');
+
+        // 플래시카드 클릭 시 뒤집기
+        flashcardEl.addEventListener('click', () => {
+            if (flashcardViewEl.style.display === 'block') {
+                flashcardEl.classList.toggle('flipped');
+            }
+        });
+
+        // 새로운 학습 세션 시작
+        // isReview: 모르는 단어 복습 세션인지 여부
+        function startNewSession(wordsToStudy, isReview = false) {
+            // wordsToStudy가 챕터 번호일 경우
+            if (typeof wordsToStudy === 'number') {
+                currentChapter = wordsToStudy;
+                const chapterData = allChapters[currentChapter];
+                if (!chapterData) {
+                    // 사용자에게 알림 메시지 표시
+                    const messageBox = document.createElement('div');
+                    messageBox.className = 'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-500 text-white p-4 rounded-lg shadow-lg z-200';
+                    messageBox.textContent = "해당 챕터의 단어 데이터가 없습니다.";
+                    document.body.appendChild(messageBox);
+                    setTimeout(() => {
+                        messageBox.remove();
+                    }, 3000); // 3초 후 메시지 제거
+                    return;
+                }
+                sessionWords = chapterData.map(word => ({ ...word, status: 'unseen' }));
+                chapterTitleEl.textContent = `Chapter ${currentChapter}`;
+            } else { // wordsToStudy가 단어 배열일 경우 (예: 모르는 단어 복습)
+                sessionWords = wordsToStudy.map(word => ({ ...word, status: 'unseen' }));
+                if (isReview) {
+                    chapterTitleEl.textContent = `모르는 단어 복습`;
+                } else {
+                    chapterTitleEl.textContent = `Chapter ${currentChapter}`; // 기존 챕터 유지
+                }
+            }
+            
+            currentCardIndex = 0;
+            switchToView('flashcard-view');
+            updateCard();
+            closeMenu();
+        }
+
+        // 카드 업데이트 (앞면, 뒷면, 진행 상황)
+        function updateCard() {
+            if (currentCardIndex >= sessionWords.length) {
+                renderCompletionCard();
+                return;
+            }
+            
+            switchToView('flashcard-view');
+
+            const word = sessionWords[currentCardIndex];
+            cardFrontTextEl.textContent = word.english;
+            cardBackTextEl.textContent = word.korean;
+            
+            flashcardEl.classList.remove('flipped'); // 새 카드 로드 시 앞면으로 설정
+            progressIndicatorEl.textContent = `${currentCardIndex + 1} / ${sessionWords.length}`;
+            
+            prevBtn.disabled = currentCardIndex === 0; // 첫 카드일 때 이전 버튼 비활성화
+            nextBtn.disabled = false; // 다음 버튼 활성화
+            aiContentContainerEl.innerHTML = ''; // AI 콘텐츠 초기화
+        }
+        
+        // 학습 완료 화면 렌더링
+        function renderCompletionCard() {
+            const unknownWords = sessionWords.filter(w => w.status === 'unknown');
+            const unknownCount = unknownWords.length;
+            
+            switchToView('completion-view');
+            
+            completionViewEl.innerHTML = `
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 mb-4">학습 완료!</h2>
+                    <p class="text-slate-600 mb-6">모르는 단어: ${unknownCount}개</p>
+                    <div class="flex flex-col gap-4 w-full">
+                        <button id="review-unknown-btn" class="w-full px-6 py-3 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 transition">모르는 단어 복습하기</button>
+                        <button id="restart-all-btn" class="w-full px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-800 transition">전체 단어 다시 학습</button>
+                        <button id="back-to-menu-btn" class="w-full px-6 py-3 bg-slate-400 text-white font-semibold rounded-lg shadow-md hover:bg-slate-500 transition">메뉴로 돌아가기</button>
+                    </div>
+                </div>
+            `;
+            
+            progressIndicatorEl.textContent = '학습 완료';
+            
+            document.getElementById('review-unknown-btn').disabled = unknownCount === 0;
+            // 모르는 단어 복습 시, isReview 플래그를 true로 전달
+            document.getElementById('review-unknown-btn').addEventListener('click', () => startNewSession(unknownWords, true)); 
+            document.getElementById('restart-all-btn').addEventListener('click', () => startNewSession(currentChapter)); 
+            document.getElementById('back-to-menu-btn').addEventListener('click', openMenu); 
+        }
+
+        // 단어 분류 (아는 단어 / 모르는 단어)
+        function handleClassification(status) {
+            if (currentCardIndex < sessionWords.length) {
+                sessionWords[currentCardIndex].status = status;
+                showNextCard();
+            }
+        }
+
+        // 다음 카드 보기
+        function showNextCard() {
+            currentCardIndex++;
+            updateCard();
+        }
+
+        // 이전 카드 보기
+        function showPrevCard() {
+            if (currentCardIndex > 0) {
+                currentCardIndex--;
+                updateCard();
+            }
+        }
+
+        // 카드 섞기
+        function shuffleCards() {
+            for (let i = sessionWords.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [sessionWords[i], sessionWords[j]] = [sessionWords[j], sessionWords[i]];
+            }
+            currentCardIndex = 0;
+            updateCard();
+        }
+
+        // 뷰 전환
+        function switchToView(viewId) {
+            [flashcardViewEl, quizViewEl, completionViewEl].forEach(el => {
+                el.style.display = (el.id === viewId) ? 'block' : 'none';
+            });
+            
+            const isFlashcard = viewId === 'flashcard-view';
+            controlsEl.style.display = isFlashcard ? 'flex' : 'none';
+            extraFeaturesEl.style.display = isFlashcard ? 'block' : 'none';
+            classificationButtonsEl.style.display = isFlashcard ? 'flex' : 'none';
+        }
+
+        // --- AI Functions ---
+        // 로딩 스피너 표시
+        function showLoading(container) { container.innerHTML = '<div class="flex justify-center items-center h-full"><div class="spinner"></div></div>'; }
+        
+        // Gemini API 호출
+        async function callGemini(prompt, schema) {
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API 요청 실패: ${response.status}`);
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0) return JSON.parse(result.candidates[0].content.parts[0].text);
+                else throw new Error("API로부터 유효한 응답을 받지 못했습니다.");
+            } catch (error) {
+                console.error("Gemini API 호출 오류:", error);
+                aiContentContainerEl.innerHTML = `<p class="text-red-500 text-center">오류: ${error.message}</p>`;
+                return null;
+            }
+        }
+
+        // 예문 생성
+        async function generateExample() {
+            if (currentCardIndex >= sessionWords.length) return;
+            showLoading(aiContentContainerEl);
+            const word = sessionWords[currentCardIndex].english;
+            const prompt = `Please create a simple and clear example sentence for the word "${word}". Also, provide the Korean translation for that sentence. Your response must be in a valid JSON format.`;
+            const schema = { type: "OBJECT", properties: { englishSentence: { type: "STRING" }, koreanTranslation: { type: "STRING" } }, required: ["englishSentence", "koreanTranslation"] };
+            const data = await callGemini(prompt, schema);
+            if (data) aiContentContainerEl.innerHTML = `<p class="font-semibold text-slate-700">${data.englishSentence}</p><p class="text-sm text-slate-500 mt-1">${data.koreanTranslation}</p>`;
+        }
+
+        // 퀴즈 생성 (유의어/반의어)
+        async function generateQuiz() {
+            if (currentCardIndex >= sessionWords.length) return;
+            switchToView('quiz-view');
+            showLoading(quizViewEl);
+            const word = sessionWords[currentCardIndex];
+            // 모든 챕터의 단어들을 문자열로 전달하여 Gemini가 보기 단어를 선택할 수 있도록 함
+            const allWordsString = Object.values(allChapters).flat().map(w => w.english).join(', ');
+
+            const prompt = `For the English word "${word.english}" which means "${word.korean}", generate a multiple-choice question in Korean asking to identify a synonym. Provide one English synonym for "${word.english}" as the correct answer. For the three distractors, choose English words from the following list that are antonyms or have a contrasting nuance to "${word.english}". If suitable antonyms are not available in the list, you may generate other plausible English antonyms.
+            
+            Word list for distractors: ${allWordsString}
+            
+            Your response must be in a valid JSON format with the keys: 'question' (Korean string), 'synonym' (English string), and 'antonyms' (array of 3 English strings).`;
+            
+            const schema = { 
+                type: "OBJECT", 
+                properties: { 
+                    question: { type: "STRING" }, 
+                    synonym: { type: "STRING" }, 
+                    antonyms: { 
+                        type: "ARRAY", 
+                        items: { type: "STRING" }, 
+                        minItems: 3, 
+                        maxItems: 3 
+                    } 
+                }, 
+                required: ["question", "synonym", "antonyms"] 
+            };
+            const data = await callGemini(prompt, schema);
+
+            if (data && data.synonym && data.antonyms && data.antonyms.length === 3) {
+                const allOptions = [data.synonym, ...data.antonyms];
+                const shuffledOptions = allOptions.sort(() => Math.random() - 0.5);
+                
+                quizViewEl.innerHTML = `
+                    <p class="text-lg font-semibold text-center mb-4">${data.question}</p>
+                    <div class="grid grid-cols-1 gap-3">
+                        ${shuffledOptions.map(o => `<button class="option-btn w-full p-3 bg-slate-100 rounded-lg hover:bg-slate-200 transition">${o}</button>`).join('')}
+                    </div>
+                    <div id="quiz-feedback" class="text-center mt-4 font-bold"></div>
+                `;
+                document.querySelectorAll('.option-btn').forEach(btn => btn.addEventListener('click', (e) => checkAnswer(e.target.textContent.trim(), data.synonym)));
+            } else {
+                quizViewEl.innerHTML = `<p class="text-red-500 text-center">퀴즈 생성 실패. 다시 시도해주세요.</p><button id="back-to-cards-btn" class="mt-4 w-full p-2 bg-slate-600 text-white rounded-lg">돌아가기</button>`;
+                document.getElementById('back-to-cards-btn').addEventListener('click', () => {
+                    switchToView('flashcard-view');
+                    updateCard();
+                });
+            }
+        }
+
+        // 퀴즈 정답 확인
+        function checkAnswer(selected, correct) {
+            const feedbackEl = document.getElementById('quiz-feedback');
+            const isCorrect = selected === correct;
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.disabled = true;
+                if (btn.textContent.trim() === correct) btn.className = 'option-btn w-full p-3 rounded-lg bg-green-500 text-white';
+                else if (btn.textContent.trim() === selected) btn.className = 'option-btn w-full p-3 rounded-lg bg-red-500 text-white';
+            });
+            feedbackEl.textContent = isCorrect ? '정답입니다!' : '오답입니다.';
+            feedbackEl.className = `text-center mt-4 font-bold ${isCorrect ? 'text-green-600' : 'text-red-600'}`;
+            quizViewEl.innerHTML += `<button id="back-to-cards-btn" class="mt-4 w-full p-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition">카드 보기</button>`;
+            document.getElementById('back-to-cards-btn').addEventListener('click', () => {
+                switchToView('flashcard-view');
+                updateCard();
+            });
+        }
+        
+        // --- Menu Functions ---
+        // 메뉴 열기
+        function openMenu() {
+            chapterMenuModal.classList.remove('hidden');
+            renderChapterList();
+        }
+
+        // 메뉴 닫기
+        function closeMenu() {
+            chapterMenuModal.classList.add('hidden');
+        }
+
+        // 챕터 목록 렌더링
+        function renderChapterList() {
+            chapterListEl.innerHTML = '';
+            for (let i = 1; i <= 20; i++) {
+                const button = document.createElement('button');
+                button.textContent = `Chapter ${i}`;
+                button.className = `p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition`;
+                button.addEventListener('click', () => startNewSession(i));
+                chapterListEl.appendChild(button);
+            }
+        }
+
+        // Event Listeners
+        nextBtn.addEventListener('click', showNextCard);
+        prevBtn.addEventListener('click', showPrevCard);
+        shuffleBtn.addEventListener('click', shuffleCards);
+        markKnownBtn.addEventListener('click', () => handleClassification('known'));
+        markUnknownBtn.addEventListener('click', () => handleClassification('unknown'));
+        generateExampleBtn.addEventListener('click', generateExample);
+        generateQuizBtn.addEventListener('click', generateQuiz);
+        menuBtn.addEventListener('click', openMenu);
+        closeMenuBtn.addEventListener('click', closeMenu);
+        
+        // Initial load: 앱 시작 시 챕터 1 로드
+        startNewSession(1);
+    </script>
+</body>
+</html>
