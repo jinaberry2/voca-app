@@ -1,0 +1,3112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V304 TEST Voca Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f0f4f8;
+            color: #334155;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+        }
+        .quiz-card {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+        }
+        .question-box {
+            background-color: #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .question-text {
+            white-space: pre-wrap;
+        }
+        .option-button {
+            transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+        }
+        .option-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .option-button.selected {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .option-button.correct {
+            background-color: #d1fae5;
+            border-color: #10b981;
+        }
+        .option-button.incorrect {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+        .results-section {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .answer-box {
+            background-color: #f0f4f8;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .pagination input {
+            width: 4rem;
+            text-align: center;
+        }
+
+        /* Responsive design for small screens */
+        @media (max-width: 640px) {
+            body {
+                padding: 0.5rem;
+            }
+            .quiz-card {
+                padding: 1.5rem;
+            }
+            .question-text {
+                font-size: 0.95rem;
+            }
+            .option-button {
+                font-size: 0.9rem;
+                padding: 0.75rem;
+            }
+            .results-section {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app" class="container">
+    <!-- 홈 버튼 추가 -->
+    <a href="index.html" class="absolute top-4 left-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        홈으로
+    </a>
+    <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">V304 TEST Voca Quiz</h1>
+    <div id="quiz-container" class="quiz-card">
+        <!-- 퀴즈 콘텐츠가 여기에 렌더링됩니다 -->
+    </div>
+</div>
+
+<script>
+    // PDF에서 추출한 퀴즈 데이터
+    const quizData = [
+        {
+            number: "001",
+            question: "BLANDISH의 반의어를 고르시오.",
+            options: ["flatter", "harass", "curry favor", "adulate", "entice"],
+            koreanQuestion: "BLANDISH의 반의어를 고르시오.",
+            koreanOptions: ["아첨하다", "괴롭히다", "아첨하다", "아첨하다", "유혹하다"],
+            answer: 2
+        },
+        {
+            number: "002",
+            question: "DENOUNCE의 반의어를 고르시오.",
+            options: ["tirade", "condemn", "screed", "eulogize", "reprehend"],
+            koreanQuestion: "DENOUNCE의 반의어를 고르시오.",
+            koreanOptions: ["장광설", "비난하다", "장광설", "칭송하다", "꾸짖다"],
+            answer: 4
+        },
+        {
+            number: "003",
+            question: "TOUT의 반의어를 고르시오.",
+            options: ["exalt", "relevant theories", "laud", "encomium", "put down"],
+            koreanQuestion: "TOUT의 반의어를 고르시오.",
+            koreanOptions: ["찬미하다", "관련된 이론", "칭찬하다", "찬사", "깔아뭉개다"],
+            answer: 5
+        },
+        {
+            number: "004",
+            question: "CAJOLE의 반의어를 고르시오.",
+            options: ["inveigle", "browbeat", "coax", "wheedle", "sweet-talk"],
+            koreanQuestion: "CAJOLE의 반의어를 고르시오.",
+            koreanOptions: ["교묘하게 속이다", "위협하다", "달래다", "구슬리다", "사탕발림을 하다"],
+            answer: 2
+        },
+        {
+            number: "005",
+            question: "DISSONANT의 반의어를 고르시오.",
+            options: ["strident", "grating", "dulcet", "discordant", "cacophonous"],
+            koreanQuestion: "DISSONANT의 반의어를 고르시오.",
+            koreanOptions: ["귀에 거슬리는", "삐걱거리는", "감미로운", "불협화음의", "불협화음의"],
+            answer: 3
+        },
+        {
+            number: "006",
+            question: "DODGE의 반의어를 고르시오.",
+            options: ["assent (to)", "shunt", "avert", "shirk", "elude"],
+            koreanQuestion: "DODGE의 반의어를 고르시오.",
+            koreanOptions: ["동의하다", "회피하다", "피하다", "회피하다", "피하다"],
+            answer: 1
+        },
+        {
+            number: "007",
+            question: "NITPICK의 반의어를 고르시오.",
+            options: ["praise", "carp", "quibble", "niggle", "cavil"],
+            koreanQuestion: "NITPICK의 반의어를 고르시오.",
+            koreanOptions: ["칭찬하다", "트집 잡다", "트집 잡다", "트집 잡다", "트집 잡다"],
+            answer: 1
+        },
+        {
+            number: "008",
+            question: "CONCILIATE의 반의어를 고르시오.",
+            options: ["placate", "propitiate", "assuage", "aggravate", "appease"],
+            koreanQuestion: "CONCILIATE의 반의어를 고르시오.",
+            koreanOptions: ["달래다", "달래다", "달래다", "악화시키다", "달래다"],
+            answer: 4
+        },
+        {
+            number: "009",
+            question: "LIONIZE의 반의어를 고르시오.",
+            options: ["dote", "idolize", "worship", "adore", "blaspheme"],
+            koreanQuestion: "LIONIZE의 반의어를 고르시오.",
+            koreanOptions: ["맹목적으로 좋아하다", "우상화하다", "숭배하다", "매우 좋아하다", "모독하다"],
+            answer: 5
+        },
+        {
+            number: "010",
+            question: "NAUSEATE의 반의어를 고르시오.",
+            options: ["disaffect", "attract", "repulse", "disgust", "repel"],
+            koreanQuestion: "NAUSEATE의 반의어를 고르시오.",
+            koreanOptions: ["정떨어지게 하다", "마음을 끌다", "혐오감을 주다", "혐오감을 주다", "혐오감을 주다"],
+            answer: 2
+        },
+        {
+            number: "011",
+            question: "IMPLACABLE의 반의어를 고르시오.",
+            options: ["unrelenting", "docile", "unappeasable", "relentless", "inexorable"],
+            koreanQuestion: "IMPLACABLE의 반의어를 고르시오.",
+            koreanOptions: ["가차 없는", "유순한", "달래기 어려운", "가차 없는", "피할 수 없는"],
+            answer: 2
+        },
+        {
+            number: "012",
+            question: "LAMBASTE의 반의어를 고르시오.",
+            options: ["flay", "chastise", "laud", "flail", "excoriate"],
+            koreanQuestion: "LAMBASTE의 반의어를 고르시오.",
+            koreanOptions: ["가죽을 벗기다", "질책하다", "칭찬하다", "매질하다", "피부를 벗기다, 혹평하다"],
+            answer: 3
+        },
+        {
+            number: "013",
+            question: "GOLDBRICK의 반의어를 고르시오.",
+            options: ["avoid", "shirk", "malinger", "quit", "go-getter"],
+            koreanQuestion: "GOLDBRICK의 반의어를 고르시오.",
+            koreanOptions: ["피하다", "회피하다", "꾀병을 부리다", "그만두다", "적극적인 사람"],
+            answer: 5
+        },
+        {
+            number: "014",
+            question: "TRIBUTE의 반의어를 고르시오.",
+            options: ["eulogy", "accolade", "rebuke", "commendation", "homage"],
+            koreanQuestion: "TRIBUTE의 반의어를 고르시오.",
+            koreanOptions: ["찬사", "찬사", "비난", "칭찬", "경의"],
+            answer: 3
+        },
+        {
+            number: "015",
+            question: "RAVISH의 반의어를 고르시오.",
+            options: ["attract", "rivet", "fascinate", "infatuate", "repel"],
+            koreanQuestion: "RAVISH의 반의어를 고르시오.",
+            koreanOptions: ["매혹하다", "매혹하다", "매혹하다", "열중시키다", "혐오감을 주다"],
+            answer: 5
+        },
+        {
+            number: "016",
+            question: "PUTRID의 반의어를 고르시오.",
+            options: ["strenchful", "spoiled", "rancid", "reeky", "pristine"],
+            koreanQuestion: "PUTRID의 반의어를 고르시오.",
+            koreanOptions: ["악취나는", "상한", "악취나는", "악취나는", "원시적인, 깨끗한"],
+            answer: 5
+        },
+        {
+            number: "017",
+            question: "CHAMPION의 반의어를 고르시오.",
+            options: ["opponent", "countenancer", "apologist", "espouser", "proponent"],
+            koreanQuestion: "CHAMPION의 반의어를 고르시오.",
+            koreanOptions: ["반대자", "지지자", "변호자", "옹호자", "지지자"],
+            answer: 1
+        },
+        {
+            number: "018",
+            question: "VILIFY의 반의어를 고르시오.",
+            options: ["slander", "malign", "acclaim", "libel", "asperse"],
+            koreanQuestion: "VILIFY의 반의어를 고르시오.",
+            koreanOptions: ["비방하다", "비방하다", "칭송하다", "명예를 훼손하다", "비방하다"],
+            answer: 3
+        },
+        {
+            number: "019",
+            question: "ESPOUSE의 반의어를 고르시오.",
+            options: ["uphold", "abandon", "embrace", "countenance", "advocate"],
+            koreanQuestion: "ESPOUSE의 반의어를 고르시오.",
+            koreanOptions: ["지지하다", "버리다", "지지하다", "지지하다", "지지하다"],
+            answer: 2
+        },
+        {
+            number: "020",
+            question: "OPPROBRIUM의 반의어를 고르시오.",
+            options: ["diatribe", "billingsgate", "obloquy", "reverence", "invective"],
+            koreanQuestion: "OPPROBRIUM의 반의어를 고르시오.",
+            koreanOptions: ["비난", "심한 욕설", "비난", "경외", "욕설"],
+            answer: 4
+        },
+        {
+            number: "021",
+            question: "SATIRE의 반의어를 고르시오.",
+            options: ["praise", "parody", "lampoon", "travesty", "burlesque"],
+            koreanQuestion: "SATIRE의 반의어를 고르시오.",
+            koreanOptions: ["찬사", "패러디", "풍자", "풍자", "풍자"],
+            answer: 1
+        },
+        {
+            number: "022",
+            question: "VETO의 반의어를 고르시오.",
+            options: ["object", "disapprove", "dissent", "demur", "tolerance"],
+            koreanQuestion: "VETO의 반의어를 고르시오.",
+            koreanOptions: ["반대하다", "반대하다", "이의를 제기하다", "이의를 제기하다", "허용"],
+            answer: 5
+        },
+        {
+            number: "023",
+            question: "ALLEGE의 반의어를 고르시오.",
+            options: ["contend", "avow", "affirm", "repudiate", "aver"],
+            koreanQuestion: "ALLEGE의 반의어를 고르시오.",
+            koreanOptions: ["주장하다", "공언하다", "단언하다", "거부하다", "단언하다"],
+            answer: 4
+        },
+        {
+            number: "024",
+            question: "DISOWN의 반의어를 고르시오.",
+            options: ["belie", "deny", "disavow", "declare", "contradict"],
+            koreanQuestion: "DISOWN의 반의어를 고르시오.",
+            koreanOptions: ["거짓임을 드러내다", "부인하다", "부인하다", "선언하다", "반박하다"],
+            answer: 4
+        },
+        {
+            number: "025",
+            question: "FAWN의 반의어를 고르시오.",
+            options: ["curry favor", "ingratiate", "scorn", "flatter", "blandish"],
+            koreanQuestion: "FAWN의 반의어를 고르시오.",
+            koreanOptions: ["아첨하다", "환심을 사다", "경멸하다", "아첨하다", "아첨하다"],
+            answer: 3
+        },
+        {
+            number: "026",
+            question: "SCURVY의 반의어를 고르시오.",
+            options: ["despicable", "reputable", "opprobrious", "contemptible", "deplorable"],
+            koreanQuestion: "SCURVY의 반의어를 고르시오.",
+            koreanOptions: ["비열한", "훌륭한", "모욕적인", "경멸할만한", "개탄스러운"],
+            answer: 2
+        },
+        {
+            number: "027",
+            question: "SCOFF의 반의어를 고르시오.",
+            options: ["flout", "mock", "tout", "gibe", "taunt"],
+            koreanQuestion: "SCOFF의 반의어를 고르시오.",
+            koreanOptions: ["경멸하다", "조롱하다", "크게 선전하다", "조롱하다", "조롱하다"],
+            answer: 3
+        },
+        {
+            number: "028",
+            question: "CORROBORATE의 반의어를 고르시오.",
+            options: ["confirm", "verify", "validate", "gainsay", "authenticate"],
+            koreanQuestion: "CORROBORATE의 반의어를 고르시오.",
+            koreanOptions: ["확증하다", "확인하다", "입증하다", "반박하다", "진짜임을 입증하다"],
+            answer: 4
+        },
+        {
+            number: "029",
+            question: "CONTROVERT의 반의어를 고르시오.",
+            options: ["disconfirm", "consent", "confute", "rebut", "disprove"],
+            koreanQuestion: "CONTROVERT의 반의어를 고르시오.",
+            koreanOptions: ["반증하다", "동의하다", "반박하다", "반박하다", "반증하다"],
+            answer: 2
+        },
+        {
+            number: "030",
+            question: "NEGATE의 반의어를 고르시오.",
+            options: ["assert", "gainsay", "renounce", "deny", "repudiate"],
+            koreanQuestion: "NEGATE의 반의어를 고르시오.",
+            koreanOptions: ["단언하다", "반박하다", "포기하다", "부정하다", "거부하다"],
+            answer: 1
+        },
+        {
+            number: "031",
+            question: "CONTEMPTUOUS의 반의어를 고르시오.",
+            options: ["courteous", "disdainful", "brash", "scornful", "abhorrent"],
+            koreanQuestion: "CONTEMPTUOUS의 반의어를 고르시오.",
+            koreanOptions: ["정중한", "경멸적인", "무례한", "경멸적인", "혐오스러운"],
+            answer: 1
+        },
+        {
+            number: "032",
+            question: "CALUMNIATE의 반의어를 고르시오.",
+            options: ["libel", "malign", "worship", "vilify", "slander"],
+            koreanQuestion: "CALUMNIATE의 반의어를 고르시오.",
+            koreanOptions: ["비방하다", "비방하다", "숭배하다", "비방하다", "비방하다"],
+            answer: 3
+        },
+        {
+            number: "033",
+            question: "IGNOBLE의 반의어를 고르시오.",
+            options: ["opprobrious", "sordid", "dishonorable", "base", "prominent"],
+            koreanQuestion: "IGNOBLE의 반의어를 고르시오.",
+            koreanOptions: ["모욕적인", "더러운", "불명예스러운", "천한", "저명한"],
+            answer: 5
+        },
+        {
+            number: "034",
+            question: "CONSENT의 반의어를 고르시오.",
+            options: ["agree", "denial", "green light", "assent", "accept"],
+            koreanQuestion: "CONSENT의 반의어를 고르시오.",
+            koreanOptions: ["동의하다", "부인", "허가", "동의", "받아들이다"],
+            answer: 2
+        },
+        {
+            number: "035",
+            question: "WARRANT의 반의어를 고르시오.",
+            options: ["justify", "prohibit", "guarantee", "vindicate", "avouch"],
+            koreanQuestion: "WARRANT의 반의어를 고르시오.",
+            koreanOptions: ["정당화하다", "금지하다", "보증하다", "정당성을 입증하다", "단언하다"],
+            answer: 2
+        },
+        {
+            number: "036",
+            question: "VALIDATE의 반의어를 고르시오.",
+            options: ["countenance", "dispute", "approve", "approbate", "authorize"],
+            koreanQuestion: "VALIDATE의 반의어를 고르시오.",
+            koreanOptions: ["지지하다", "논쟁하다", "승인하다", "승인하다", "인가하다"],
+            answer: 2
+        },
+        {
+            number: "037",
+            question: "AWE의 반의어를 고르시오.",
+            options: ["venerate", "defer", "incuriosity", "awesome", "redoubtable"],
+            koreanQuestion: "AWE의 반의어를 고르시오.",
+            koreanOptions: ["존경하다", "경의를 표하다", "무관심", "경외감을 일으키는", "경외할만한"],
+            answer: 3
+        },
+        {
+            number: "038",
+            question: "BLASPHEME의 반의어를 고르시오.",
+            options: ["contemn", "disparage", "bless", "slight", "despise"],
+            koreanQuestion: "BLASPHEME의 반의어를 고르시오.",
+            koreanOptions: ["경멸하다", "폄하하다", "축복하다", "경시하다", "경멸하다"],
+            answer: 3
+        },
+        {
+            number: "039",
+            question: "INDIGNITY의 반의어를 고르시오.",
+            options: ["epithet", "disgrace", "put-down", "compliment", "affront"],
+            koreanQuestion: "INDIGNITY의 반의어를 고르시오.",
+            koreanOptions: ["욕설", "불명예", "폄하", "칭찬", "모욕"],
+            answer: 4
+        },
+        {
+            number: "040",
+            question: "JEER의 반의어를 고르시오.",
+            options: ["applause", "jibe", "fleer", "quip", "flout"],
+            koreanQuestion: "JEER의 반의어를 고르시오.",
+            koreanOptions: ["박수", "조롱", "조롱", "재치 있는 말", "경멸하다"],
+            answer: 1
+        },
+        {
+            number: "041",
+            question: "BLURT의 반의어를 고르시오.",
+            options: ["bespeak", "tattle", "debunk", "veil", "squeal"],
+            koreanQuestion: "BLURT의 반의어를 고르시오.",
+            koreanOptions: ["증명하다", "고자질하다", "정체를 폭로하다", "감추다", "밀고하다"],
+            answer: 4
+        },
+        {
+            number: "042",
+            question: "RUNIC의 반의어를 고르시오.",
+            options: ["straightforward", "profound", "inscrutable", "hermetic", "abstruse"],
+            koreanQuestion: "RUNIC의 반의어를 고르시오.",
+            koreanOptions: ["솔직한", "심오한", "헤아리기 어려운", "난해한", "심오한"],
+            answer: 1
+        },
+        {
+            number: "043",
+            question: "REASSURED의 반의어를 고르시오.",
+            options: ["convinced", "cocksure", "demoralize", "certain", "assured"],
+            koreanQuestion: "REASSURED의 반의어를 고르시오.",
+            koreanOptions: ["납득한", "자신만만한", "사기를 꺾다", "확실한", "자신만만한"],
+            answer: 3
+        },
+        {
+            number: "044",
+            question: "FATHOM의 반의어를 고르시오.",
+            options: ["seize", "apprehend", "catch", "grasp", "helplessness"],
+            koreanQuestion: "FATHOM의 반의어를 고르시오.",
+            koreanOptions: ["붙잡다", "이해하다", "이해하다", "이해하다", "무기력"],
+            answer: 5
+        },
+        {
+            number: "045",
+            question: "MENDACIOUS의 반의어를 고르시오.",
+            options: ["cunning", "wily", "fraudulent", "artful", "candid"],
+            koreanQuestion: "MENDACIOUS의 반의어를 고르시오.",
+            koreanOptions: ["교활한", "교활한", "사기적인", "교활한", "솔직한"],
+            answer: 5
+        },
+        {
+            number: "046",
+            question: "VERISIMILAR의 반의어를 고르시오.",
+            options: ["dubious", "cogent", "plausible", "convincing", "believable"],
+            koreanQuestion: "VERISIMILAR의 반의어를 고르시오.",
+            koreanOptions: ["의심스러운", "설득력 있는", "그럴듯한", "설득력 있는", "믿을만한"],
+            answer: 1
+        },
+        {
+            number: "047",
+            question: "COZEN의 반의어를 고르시오.",
+            options: ["bluff", "gull", "wile", "expose", "chisel"],
+            koreanQuestion: "COZEN의 반의어를 고르시오.",
+            koreanOptions: ["허세를 부리다", "속이다", "책략으로 속이다", "폭로하다", "속이다"],
+            answer: 4
+        },
+        {
+            number: "048",
+            question: "ORTHODOX의 반의어를 고르시오.",
+            options: ["genuine", "canonical", "unauthorized", "verifiable", "flawless"],
+            koreanQuestion: "ORTHODOX의 반의어를 고르시오.",
+            koreanOptions: ["진짜의", "정통의", "무허가의", "입증할 수 있는", "흠 없는"],
+            answer: 3
+        },
+        {
+            number: "049",
+            question: "INFIDELITY의 반의어를 고르시오.",
+            options: ["steadfastness", "perfidy", "treachery", "faithlessness", "disloyalty"],
+            koreanQuestion: "INFIDELITY의 반의어를 고르시오.",
+            koreanOptions: ["견고함, 충실함", "배신", "배신", "신의 없음", "불충"],
+            answer: 1
+        },
+        {
+            number: "050",
+            question: "INHUME의 반의어를 고르시오.",
+            options: ["earth", "reveal", "bury", "entomb", "inter"],
+            koreanQuestion: "INHUME의 반의어를 고르시오.",
+            koreanOptions: ["묻다", "드러내다", "묻다", "묻다", "묻다"],
+            answer: 2
+        },
+        {
+            number: "051",
+            question: "SKEPTICAL의 반의어를 고르시오.",
+            options: ["dubious", "naive", "paranoid", "doubtful", "suspicious"],
+            koreanQuestion: "SKEPTICAL의 반의어를 고르시오.",
+            koreanOptions: ["의심스러운", "순진한", "피해망상적인", "의심스러운", "의심스러운"],
+            answer: 2
+        },
+        {
+            number: "052",
+            question: "MACHINATION의 반의어를 고르시오.",
+            options: ["artifice", "gambit", "subterfuge", "artlessness", "gimmick"],
+            koreanQuestion: "MACHINATION의 반의어를 고르시오.",
+            koreanOptions: ["교활한 책략", "계략", "속임수", "교활하지 못함", "속임수"],
+            answer: 4
+        },
+        {
+            number: "053",
+            question: "HETERODOX의 반의어를 고르시오.",
+            options: ["errant", "specious", "bogus", "fictitious", "correct"],
+            koreanQuestion: "HETERODOX의 반의어를 고르시오.",
+            koreanOptions: ["잘못된", "그럴듯한", "가짜의", "가상의", "정통의"],
+            answer: 5
+        },
+        {
+            number: "054",
+            question: "UNCONVINCING의 반의어를 고르시오.",
+            options: ["incredible", "unbelievable", "inconceivable", "implausible", "reasonable"],
+            koreanQuestion: "UNCONVINCING의 반의어를 고르시오.",
+            koreanOptions: ["믿을 수 없는", "믿을 수 없는", "상상할 수 없는", "그럴듯하지 않은", "타당한"],
+            answer: 5
+        },
+        {
+            number: "055",
+            question: "DISILLUSION의 반의어를 고르시오.",
+            options: ["disenchant", "undecieve", "beguile", "disabuse", "debunk"],
+            koreanQuestion: "DISILLUSION의 반의어를 고르시오.",
+            koreanOptions: ["환멸을 느끼게 하다", "진실을 알려주다", "속이다", "잘못을 깨닫게 하다", "정체를 폭로하다"],
+            answer: 3
+        },
+        {
+            number: "056",
+            question: "COMPREHENSIBLE의 반의어를 고르시오.",
+            options: ["esoteric", "fathomable", "understandable", "apprehensible", "graspable"],
+            koreanQuestion: "COMPREHENSIBLE의 반의어를 고르시오.",
+            koreanOptions: ["난해한", "이해할 수 있는", "이해할 수 있는", "이해할 수 있는", "이해할 수 있는"],
+            answer: 1
+        },
+        {
+            number: "057",
+            question: "ECLIPSE의 반의어를 고르시오.",
+            options: ["exhibit", "ensconce", "snug", "conceal", "sequester"],
+            koreanQuestion: "ECLIPSE의 반의어를 고르시오.",
+            koreanOptions: ["드러내다", "숨기다", "안락한", "숨기다", "격리시키다"],
+            answer: 1
+        },
+        {
+            number: "058",
+            question: "BLUNDER의 반의어를 고르시오.",
+            options: ["camouflage", "blab", "snitch", "bare", "disclose"],
+            koreanQuestion: "BLUNDER의 반의어를 고르시오.",
+            koreanOptions: ["위장하다", "지껄이다", "고자질하다", "드러내다", "폭로하다"],
+            answer: 4
+        },
+        {
+            number: "059",
+            question: "INDUBITABLE의 반의어를 고르시오.",
+            options: ["accomplished", "undoubted", "debated", "unarguable", "irrefutable"],
+            koreanQuestion: "INDUBITABLE의 반의어를 고르시오.",
+            koreanOptions: ["숙련된", "의심할 여지 없는", "논란의 여지가 있는", "논쟁할 수 없는", "반박할 수 없는"],
+            answer: 3
+        },
+        {
+            number: "060",
+            question: "PLUMB의 반의어를 고르시오.",
+            options: ["grasp", "understand", "sound", "misinterpretation", "fathom"],
+            koreanQuestion: "PLUMB의 반의어를 고르시오.",
+            koreanOptions: ["이해하다", "이해하다", "깊이를 재다", "오해", "깊이를 재다"],
+            answer: 4
+        },
+        {
+            number: "061",
+            question: "INSENSATE의 반의어를 고르시오.",
+            options: ["listless", "lethargic", "vibrant", "blase", "sluggish"],
+            koreanQuestion: "INSENSATE의 반의어를 고르시오.",
+            koreanOptions: ["활기 없는", "무기력한", "활기찬", "냉담한", "둔한"],
+            answer: 3
+        },
+        {
+            number: "062",
+            question: "YEARN의 반의어를 고르시오.",
+            options: ["long", "crave", "abhor", "aspire", "covet"],
+            koreanQuestion: "YEARN의 반의어를 고르시오.",
+            koreanOptions: ["갈망하다", "갈망하다", "혐오하다", "열망하다", "탐내다"],
+            answer: 3
+        },
+        {
+            number: "063",
+            question: "INERT의 반의어를 고르시오.",
+            options: ["operational", "slumber", "torpid", "leaden", "dormant"],
+            koreanQuestion: "INERT의 반의어를 고르시오.",
+            koreanOptions: ["작동하는", "휴면", "무기력한", "무거운", "휴면 상태의"],
+            answer: 1
+        },
+        {
+            number: "064",
+            question: "RAREFY의 반의어를 고르시오.",
+            options: ["dilute", "water down", "extenuate", "reinforce", "attenuate"],
+            koreanQuestion: "RAREFY의 반의어를 고르시오.",
+            koreanOptions: ["묽게 하다", "묽게 하다", "경감하다", "강화하다", "약화시키다"],
+            answer: 4
+        },
+        {
+            number: "065",
+            question: "FORTIFY의 반의어를 고르시오.",
+            options: ["brace", "underlie", "strengthen", "prop", "dishearten"],
+            koreanQuestion: "FORTIFY의 반의어를 고르시오.",
+            koreanOptions: ["버티다", "기초가 되다", "강화하다", "지지하다", "낙담시키다"],
+            answer: 5
+        },
+        {
+            number: "066",
+            question: "FECKLESS의 반의어를 고르시오.",
+            options: ["weary", "energetic", "effete", "limp", "spindly"],
+            koreanQuestion: "FECKLESS의 반의어를 고르시오.",
+            koreanOptions: ["지친", "활동적인", "기운 없는", "축 늘어진", "가느다란"],
+            answer: 2
+        },
+        {
+            number: "067",
+            question: "CONSOLIDATE의 반의어를 고르시오.",
+            options: ["contract", "centralize", "concentrate", "segregate", "condense"],
+            koreanQuestion: "CONSOLIDATE의 반의어를 고르시오.",
+            koreanOptions: ["수축하다", "집중하다", "집중하다", "분리하다", "농축하다"],
+            answer: 4
+        },
+        {
+            number: "068",
+            question: "TORRID의 반의어를 고르시오.",
+            options: ["impersonal", "fervent", "impassioned", "ardent", "passionate"],
+            koreanQuestion: "TORRID의 반의어를 고르시오.",
+            koreanOptions: ["냉담한", "열렬한", "열정적인", "열렬한", "열정적인"],
+            answer: 1
+        },
+        {
+            number: "069",
+            question: "BRISK의 반의어를 고르시오.",
+            options: ["indolent", "lively", "effervescent", "ebullient", "animated"],
+            koreanQuestion: "BRISK의 반의어를 고르시오.",
+            koreanOptions: ["게으른", "활발한", "활발한", "활기찬", "활기찬"],
+            answer: 1
+        },
+        {
+            number: "070",
+            question: "EXUBERANT의 반의어를 고르시오.",
+            options: ["exhilarated", "elated", "repressed", "excitable", "agog"],
+            koreanQuestion: "EXUBERANT의 반의어를 고르시오.",
+            koreanOptions: ["들뜬", "매우 기뻐하는", "억제된", "흥분하기 쉬운", "흥분하여"],
+            answer: 3
+        },
+        {
+            number: "071",
+            question: "NUMB의 반의어를 고르시오.",
+            options: ["unconcerned", "nonchalant", "sensitive", "indifferent", "callous"],
+            koreanQuestion: "NUMB의 반의어를 고르시오.",
+            koreanOptions: ["무관심한", "태연한", "민감한", "무관심한", "무감각한"],
+            answer: 3
+        },
+        {
+            number: "072",
+            question: "SPRY의 반의어를 고르시오.",
+            options: ["mercurial", "skittish", "active", "sprightly", "torpid"],
+            koreanQuestion: "SPRY의 반의어를 고르시오.",
+            koreanOptions: ["변덕스러운", "겁 많은", "활동적인", "활발한", "무기력한"],
+            answer: 5
+        },
+        {
+            number: "073",
+            question: "ENFEEBLE의 반의어를 고르시오.",
+            options: ["invigorate", "sap", "emaciate", "enervate", "debilitate"],
+            koreanQuestion: "ENFEEBLE의 반의어를 고르시오.",
+            koreanOptions: ["활력을 불어넣다", "약화시키다", "쇠약하게 하다", "기력을 떨어뜨리다", "쇠약하게 하다"],
+            answer: 1
+        },
+        {
+            number: "074",
+            question: "ARDOR의 반의어를 고르시오.",
+            options: ["zeal", "composure", "passion", "fervency", "enthusiasm"],
+            koreanQuestion: "ARDOR의 반의어를 고르시오.",
+            koreanOptions: ["열정", "평정심", "열정", "열정", "열정"],
+            answer: 2
+        },
+        {
+            number: "075",
+            question: "PUISSANCE의 반의어를 고르시오.",
+            options: ["incompetence", "clout", "thews", "potency", "verve"],
+            koreanQuestion: "PUISSANCE의 반의어를 고르시오.",
+            koreanOptions: ["무능", "영향력", "근육", "힘", "활기"],
+            answer: 1
+        },
+        {
+            number: "076",
+            question: "PINE의 반의어를 고르시오.",
+            options: ["ache for", "desire", "loathe", "yearn for", "wish for"],
+            koreanQuestion: "PINE의 반의어를 고르시오.",
+            koreanOptions: ["갈망하다", "바라다", "혐오하다", "갈망하다", "바라다"],
+            answer: 3
+        },
+        {
+            number: "077",
+            question: "MERCURIAL의 반의어를 고르시오.",
+            options: ["fickle", "capricious", "changeable", "durable", "inconstant"],
+            koreanQuestion: "MERCURIAL의 반의어를 고르시오.",
+            koreanOptions: ["변덕스러운", "변덕스러운", "변하기 쉬운", "내구성 있는", "변덕스러운"],
+            answer: 4
+        },
+        {
+            number: "078",
+            question: "STOUT의 반의어를 고르시오.",
+            options: ["brawny", "husky", "robust", "sapped", "sturdy"],
+            koreanQuestion: "STOUT의 반의어를 고르시오.",
+            koreanOptions: ["근육질의", "건장한", "튼튼한", "기운 빠진", "튼튼한"],
+            answer: 4
+        },
+        {
+            number: "079",
+            question: "INFIRM의 반의어를 고르시오.",
+            options: ["flabby", "weak", "frail", "feeble", "fit"],
+            koreanQuestion: "INFIRM의 반의어를 고르시오.",
+            koreanOptions: ["살이 축 늘어진", "약한", "허약한", "약한", "건강한"],
+            answer: 5
+        },
+        {
+            number: "080",
+            question: "WISTFUL의 반의어를 고르시오.",
+            options: ["charitable", "greedy", "covetous", "rapacious", "avaricious"],
+            koreanQuestion: "WISTFUL의 반의어를 고르시오.",
+            koreanOptions: ["자비로운", "탐욕스러운", "탐내는", "탐욕스러운", "탐욕스러운"],
+            answer: 1
+        },
+        {
+            number: "081",
+            question: "CLEFT의 반의어를 고르시오.",
+            options: ["division", "chasm", "attachment", "schism", "conflict"],
+            koreanQuestion: "CLEFT의 반의어를 고르시오.",
+            koreanOptions: ["분열", "틈", "결합", "분열", "갈등"],
+            answer: 3
+        },
+        {
+            number: "082",
+            question: "HASSLE의 반의어를 고르시오.",
+            options: ["brawl", "affray", "tussle", "scrimmage", "truce"],
+            koreanQuestion: "HASSLE의 반의어를 고르시오.",
+            koreanOptions: ["난투", "난투", "난투", "격투", "휴전"],
+            answer: 5
+        },
+        {
+            number: "083",
+            question: "SUBMISSIVE의 반의어를 고르시오.",
+            options: ["corrigible", "obedient", "compliant", "amenable", "insurgent"],
+            koreanQuestion: "SUBMISSIVE의 반의어를 고르시오.",
+            koreanOptions: ["고칠 수 있는", "복종하는", "고분고분한", "순종하는", "반항적인"],
+            answer: 5
+        },
+        {
+            number: "084",
+            question: "RECONCILE의 반의어를 고르시오.",
+            options: ["iron", "disrupt", "mediate", "arbitrate", "moderate"],
+            koreanQuestion: "RECONCILE의 반의어를 고르시오.",
+            koreanOptions: ["다리미질하다", "방해하다", "중재하다", "중재하다", "완화하다"],
+            answer: 2
+        },
+        {
+            number: "085",
+            question: "AFFINITY의 반의어를 고르시오.",
+            options: ["congeniality", "rapport", "amity", "averseness", "rapprochement"],
+            koreanQuestion: "AFFINITY의 반의어를 고르시오.",
+            koreanOptions: ["친화성", "친화성", "친목", "혐오", "관계 회복"],
+            answer: 4
+        },
+        {
+            number: "086",
+            question: "UNCTUOUS의 반의어를 고르시오.",
+            options: ["sleek", "oily", "glib", "artless", "slick"],
+            koreanQuestion: "UNCTUOUS의 반의어를 고르시오.",
+            koreanOptions: ["윤기 나는", "기름기 있는", "말솜씨가 좋은", "순진한", "매끈한"],
+            answer: 4
+        },
+        {
+            number: "087",
+            question: "STIFF의 반의어를 고르시오.",
+            options: ["stretchy", "inflexible", "stark", "rigid", "inelastic"],
+            koreanQuestion: "STIFF의 반의어를 고르시오.",
+            koreanOptions: ["신축성 있는", "융통성 없는", "완전한", "엄격한", "탄력 없는"],
+            answer: 1
+        },
+        {
+            number: "088",
+            question: "SUPPLE의 반의어를 고르시오.",
+            options: ["lithe", "bendy", "limber", "stiffened", "lissome"],
+            koreanQuestion: "SUPPLE의 반의어를 고르시오.",
+            koreanOptions: ["유연한", "구부러지는", "유연한", "뻣뻣해진", "유연한"],
+            answer: 4
+        },
+        {
+            number: "089",
+            question: "RECALCITRANT의 반의어를 고르시오.",
+            options: ["intractable", "obstreperous", "perverse", "well-bred", "willful"],
+            koreanQuestion: "RECALCITRANT의 반의어를 고르시오.",
+            koreanOptions: ["다루기 어려운", "통제할 수 없는", "괴팍한", "예의 바른", "고의적인"],
+            answer: 4
+        },
+        {
+            number: "090",
+            question: "PUGNACIOUS의 반의어를 고르시오.",
+            options: ["scrappy", "benevolent", "martial", "bellicose", "warlike"],
+            koreanQuestion: "PUGNACIOUS의 반의어를 고르시오.",
+            koreanOptions: ["싸우기 좋아하는", "자비로운", "호전적인", "호전적인", "호전적인"],
+            answer: 2
+        },
+        {
+            number: "091",
+            question: "RHUBARB의 반의어를 고르시오.",
+            options: ["polemic", "argument", "assent", "altercation", "bicker"],
+            koreanQuestion: "RHUBARB의 반의어를 고르시오.",
+            koreanOptions: ["논쟁", "논쟁", "동의", "언쟁", "말다툼"],
+            answer: 3
+        },
+        {
+            number: "092",
+            question: "TACKY의 반의어를 고르시오.",
+            options: ["viscous", "glutinous", "sticky", "nonadhesive", "viscid"],
+            koreanQuestion: "TACKY의 반의어를 고르시오.",
+            koreanOptions: ["끈적거리는", "끈적거리는", "끈적거리는", "비점착성의", "끈적거리는"],
+            answer: 4
+        },
+        {
+            number: "093",
+            question: "WRANGLE의 반의어를 고르시오.",
+            options: ["squabble", "contention", "feud", "controversy", "concur"],
+            koreanQuestion: "WRANGLE의 반의어를 고르시오.",
+            koreanOptions: ["말다툼하다", "논쟁", "불화", "논쟁", "동의하다"],
+            answer: 5
+        },
+        {
+            number: "094",
+            question: "ALIENATE의 반의어를 고르시오.",
+            options: ["reconcile", "sever", "disaffect", "wean", "estrange"],
+            koreanQuestion: "ALIENATE의 반의어를 고르시오.",
+            koreanOptions: ["화해시키다", "절단하다", "정떨어지게 하다", "떼어놓다", "소원하게 만들다"],
+            answer: 1
+        },
+        {
+            number: "095",
+            question: "POLEMIC(AL)의 반의어를 고르시오.",
+            options: ["controversial", "disputatious", "agreeable", "quarrelsome", "argumentative"],
+            koreanQuestion: "POLEMIC(AL)의 반의어를 고르시오.",
+            koreanOptions: ["논쟁적인", "논쟁적인", "쾌활한", "싸우기 좋아하는", "논쟁적인"],
+            answer: 3
+        },
+        {
+            number: "096",
+            question: "DUEL의 반의어를 고르시오.",
+            options: ["debate", "concord", "spar", "argument", "box"],
+            koreanQuestion: "DUEL의 반의어를 고르시오.",
+            koreanOptions: ["논쟁하다", "화합", "겨루다", "논쟁", "싸우다"],
+            answer: 2
+        },
+        {
+            number: "097",
+            question: "DUCTILE의 반의어를 고르시오.",
+            options: ["firm", "pliant", "flexible", "malleable", "plastic"],
+            koreanQuestion: "DUCTILE의 반의어를 고르시오.",
+            koreanOptions: ["단단한", "유연한", "유연한", "유연한", "유연한"],
+            answer: 1
+        },
+        {
+            number: "098",
+            question: "SKIRMISH의 반의어를 고르시오.",
+            options: ["miff", "spat", "bicker", "truce", "tiff"],
+            koreanQuestion: "SKIRMISH의 반의어를 고르시오.",
+            koreanOptions: ["사소한 언쟁", "사소한 언쟁", "말다툼하다", "휴전", "사소한 언쟁"],
+            answer: 4
+        },
+        {
+            number: "099",
+            question: "STUBBORN의 반의어를 고르시오.",
+            options: ["willing", "refractory", "obstinate", "tenacious", "opinionated"],
+            koreanQuestion: "STUBBORN의 반의어를 고르시오.",
+            koreanOptions: ["기꺼이 하는", "다루기 어려운", "고집스러운", "끈기 있는", "고집 센"],
+            answer: 1
+        },
+        {
+            number: "100",
+            question: "DEFY의 반의어를 고르시오.",
+            options: ["counter", "disobey", "resist", "withstand", "defer (to)"],
+            koreanQuestion: "DEFY의 반의어를 고르시오.",
+            koreanOptions: ["반박하다", "불복종하다", "저항하다", "견뎌내다", "따르다"],
+            answer: 5
+        },
+        {
+            number: "101",
+            question: "ONEROUS의 반의어를 고르시오.",
+            options: ["cozy", "labored", "spiny", "cumbersome", "exacting"],
+            koreanQuestion: "ONEROUS의 반의어를 고르시오.",
+            koreanOptions: ["아늑한", "힘든", "가시가 많은", "번거로운", "힘든"],
+            answer: 1
+        },
+        {
+            number: "102",
+            question: "CROSS의 반의어를 고르시오.",
+            options: ["dyspeptic", "testy", "peevish", "genial", "irritable"],
+            koreanQuestion: "CROSS의 반의어를 고르시오.",
+            koreanOptions: ["소화 불량의", "성미가 급한", "심술궂은", "친절한", "짜증을 잘 내는"],
+            answer: 4
+        },
+        {
+            number: "103",
+            question: "BEMOAN의 반의어를 고르시오.",
+            options: ["deplore", "lament", "bewail", "mourn", "relish"],
+            koreanQuestion: "BEMOAN의 반의어를 고르시오.",
+            koreanOptions: ["개탄하다", "슬퍼하다", "슬퍼하다", "슬퍼하다", "즐기다"],
+            answer: 5
+        },
+        {
+            number: "104",
+            question: "BRISTLE의 반의어를 고르시오.",
+            options: ["roar", "repress", "rant", "rage", "rave"],
+            koreanQuestion: "BRISTLE의 반의어를 고르시오.",
+            koreanOptions: ["으르렁거리다", "억제하다", "호통치다", "격노하다", "열변을 토하다"],
+            answer: 2
+        },
+        {
+            number: "105",
+            question: "HARRY의 반의어를 고르시오.",
+            options: ["aggrieve", "gruel", "torment", "solace", "distress"],
+            koreanQuestion: "HARRY의 반의어를 고르시오.",
+            koreanOptions: ["괴롭히다", "녹초로 만들다", "괴롭히다", "위로하다", "고통을 주다"],
+            answer: 4
+        },
+        {
+            number: "106",
+            question: "EXTRICATE의 반의어를 고르시오.",
+            options: ["untangle", "release", "hinder", "disentangle", "unravel"],
+            koreanQuestion: "EXTRICATE의 반의어를 고르시오.",
+            koreanOptions: ["엉킨 것을 풀다", "풀어주다", "방해하다", "엉킨 것을 풀다", "풀어지다"],
+            answer: 3
+        },
+        {
+            number: "107",
+            question: "PROPITIATE의 반의어를 고르시오.",
+            options: ["conciliate", "placate", "appease", "chale", "pacify"],
+            koreanQuestion: "PROPITIATE의 반의어를 고르시오.",
+            koreanOptions: ["달래다", "달래다", "달래다", "악화시키다", "달래다"],
+            answer: 4
+        },
+        {
+            number: "108",
+            question: "JUBILATE의 반의어를 고르시오.",
+            options: ["rejoice", "effervesce", "cheer", "weep", "exult"],
+            koreanQuestion: "JUBILATE의 반의어를 고르시오.",
+            koreanOptions: ["기뻐하다", "활기를 띠다", "응원하다", "울다", "환희하다"],
+            answer: 4
+        },
+        {
+            number: "109",
+            question: "QUANDARY의 반의어를 고르시오.",
+            options: ["stalemate", "predicament", "morass", "impasse", "breeze"],
+            koreanQuestion: "QUANDARY의 반의어를 고르시오.",
+            koreanOptions: ["교착 상태", "곤경", "난국", "교착 상태", "쉬운 일"],
+            answer: 5
+        },
+        {
+            number: "110",
+            question: "SINECURE의 반의어를 고르시오.",
+            options: ["stalwart", "pushover", "weakling", "doddle", "coward"],
+            koreanQuestion: "SINECURE의 반의어를 고르시오.",
+            koreanOptions: ["건장한 사람", "만만한 사람", "약골", "식은 죽 먹기", "겁쟁이"],
+            answer: 1
+        },
+        {
+            number: "111",
+            question: "EXULTANT의 반의어를 고르시오.",
+            options: ["jolly", "disconsolate", "ebullient", "luxuriant", "jovial"],
+            koreanQuestion: "EXULTANT의 반의어를 고르시오.",
+            koreanOptions: ["즐거운", "음울한", "활기찬", "무성한", "쾌활한"],
+            answer: 2
+        },
+        {
+            number: "112",
+            question: "TRIBULATION의 반의어를 고르시오.",
+            options: ["toil", "onus", "burden", "travail", "alleviation"],
+            koreanQuestion: "TRIBULATION의 반의어를 고르시오.",
+            koreanOptions: ["노고", "부담", "부담", "노고", "완화"],
+            answer: 5
+        },
+        {
+            number: "113",
+            question: "IMBROGLIO의 반의어를 고르시오.",
+            options: ["lurch", "deadlock", "plight", "aid", "stymie"],
+            koreanQuestion: "IMBROGLIO의 반의어를 고르시오.",
+            koreanOptions: ["곤경", "교착 상태", "곤경", "도움", "방해하다"],
+            answer: 4
+        },
+        {
+            number: "114",
+            question: "SOOTHE의 반의어를 고르시오.",
+            options: ["torture", "mitigate", "alleviate", "palliate", "assuage"],
+            koreanQuestion: "SOOTHE의 반의어를 고르시오.",
+            koreanOptions: ["고통을 주다", "완화하다", "완화하다", "완화하다", "달래다"],
+            answer: 1
+        },
+        {
+            number: "115",
+            question: "UMBRAGE의 반의어를 고르시오.",
+            options: ["gratification", "ire", "choler", "resentment", "pique"],
+            koreanQuestion: "UMBRAGE의 반의어를 고르시오.",
+            koreanOptions: ["만족", "분노", "격분", "분노", "화"],
+            answer: 1
+        },
+        {
+            number: "116",
+            question: "ANGUISH의 반의어를 고르시오.",
+            options: ["travail", "ordeal", "affliction", "reliel", "woe"],
+            koreanQuestion: "ANGUISH의 반의어를 고르시오.",
+            koreanOptions: ["고통", "시련", "고통", "안도", "고통"],
+            answer: 4
+        },
+        {
+            number: "117",
+            question: "PLAINTIVE의 반의어를 고르시오.",
+            options: ["lachrymose", "mournful", "lugubrious", "sulky", "triumphant"],
+            koreanQuestion: "PLAINTIVE의 반의어를 고르시오.",
+            koreanOptions: ["눈물을 자아내는", "애절한", "음울한", "성질 나쁜", "의기양양한"],
+            answer: 5
+        },
+        {
+            number: "118",
+            question: "IMPLICATE의 반의어를 고르시오.",
+            options: ["untwine", "mire", "ravel", "enmesh", "snarl"],
+            koreanQuestion: "IMPLICATE의 반의어를 고르시오.",
+            koreanOptions: ["풀다", "곤경에 빠뜨리다", "엉킨 것을 풀다", "얽어매다", "엉키게 하다"],
+            answer: 1
+        },
+        {
+            number: "119",
+            question: "RISIBLE의 반의어를 고르시오.",
+            options: ["hilarious", "jocose", "sedate", "humorous", "jocular"],
+            koreanQuestion: "RISIBLE의 반의어를 고르시오.",
+            koreanOptions: ["매우 우스운", "익살맞은", "침착한", "유머러스한", "익살맞은"],
+            answer: 3
+        },
+        {
+            number: "120",
+            question: "BADGER의 반의어를 고르시오.",
+            options: ["nag", "rankle", "vex", "gall", "lull"],
+            koreanQuestion: "BADGER의 반의어를 고르시오.",
+            koreanOptions: ["잔소리하다", "괴롭히다", "괴롭히다", "화나게 하다", "달래다"],
+            answer: 5
+        },
+        {
+            number: "121",
+            question: "SUAVE의 반의어를 고르시오.",
+            options: ["gauche", "agreeable", "lenient", "genteel", "well-bred"],
+            koreanQuestion: "SUAVE의 반의어를 고르시오.",
+            koreanOptions: ["서투른", "쾌활한", "관대한", "품위 있는", "예의 바른"],
+            answer: 1
+        },
+        {
+            number: "122",
+            question: "INCISIVE의 반의어를 고르시오.",
+            options: ["pungent", "cutting", "mellow", "vitriolic", "poignant"],
+            koreanQuestion: "INCISIVE의 반의어를 고르시오.",
+            koreanOptions: ["신랄한", "날카로운", "부드러운", "신랄한", "신랄한"],
+            answer: 3
+        },
+        {
+            number: "123",
+            question: "PROFUSE의 반의어를 고르시오.",
+            options: ["lavish", "liberal", "copious", "meager", "munificent"],
+            koreanQuestion: "PROFUSE의 반의어를 고르시오.",
+            koreanOptions: ["풍부한", "아낌없는", "풍부한", "빈약한", "아낌없는"],
+            answer: 4
+        },
+        {
+            number: "124",
+            question: "RACY의 반의어를 고르시오.",
+            options: ["keen", "acerbic", "piquant", "edgy", "dull"],
+            koreanQuestion: "RACY의 반의어를 고르시오.",
+            koreanOptions: ["날카로운", "신랄한", "짜릿한", "흥분한", "지루한"],
+            answer: 5
+        },
+        {
+            number: "125",
+            question: "PARSIMONIOUS의 반의어를 고르시오.",
+            options: ["stingy", "spare", "charitable", "pinching", "niggard"],
+            koreanQuestion: "PARSIMONIOUS의 반의어를 고르시오.",
+            koreanOptions: ["인색한", "절약하는", "관대한", "인색한", "인색한"],
+            answer: 3
+        },
+        {
+            number: "126",
+            question: "GENTLE의 반의어를 고르시오.",
+            options: ["amiable", "severe", "benign", "even-tampered", "nonabrasive"],
+            koreanQuestion: "GENTLE의 반의어를 고르시오.",
+            koreanOptions: ["상냥한", "가혹한", "상냥한", "온화한", "마모시키지 않는"],
+            answer: 2
+        },
+        {
+            number: "127",
+            question: "ACCUMULATE의 반의어를 고르시오.",
+            options: ["diminish", "hoard", "escalate", "gather", "amass"],
+            koreanQuestion: "ACCUMULATE의 반의어를 고르시오.",
+            koreanOptions: ["줄이다", "축적하다", "악화시키다", "모으다", "모으다"],
+            answer: 1
+        },
+        {
+            number: "128",
+            question: "BEGRUDGE의 반의어를 고르시오.",
+            options: ["skimp", "stint", "grudge", "hospitality", "scant"],
+            koreanQuestion: "BEGRUDGE의 반의어를 고르시오.",
+            koreanOptions: ["아끼다", "절약하다", "불만을 갖다", "환대", "부족하게 하다"],
+            answer: 4
+        },
+        {
+            number: "129",
+            question: "WASTREL의 반의어를 고르시오.",
+            options: ["prodigal", "spendthrift", "squanderer", "profligate", "skinflint"],
+            koreanQuestion: "WASTREL의 반의어를 고르시오.",
+            koreanOptions: ["낭비하는", "낭비하는", "낭비하는", "낭비하는", "인색한 사람"],
+            answer: 5
+        },
+        {
+            number: "130",
+            question: "THRIFTY의 반의어를 고르시오.",
+            options: ["unsparing", "economical", "frugal", "husbanding", "sparing"],
+            koreanQuestion: "THRIFTY의 반의어를 고르시오.",
+            koreanOptions: ["아끼지 않는", "경제적인", "절약하는", "아끼는", "아끼는"],
+            answer: 1
+        },
+        {
+            number: "131",
+            question: "GARNER의 반의어를 고르시오.",
+            options: ["flock", "dispel", "collect", "accumulate", "store"],
+            koreanQuestion: "GARNER의 반의어를 고르시오.",
+            koreanOptions: ["모이다", "흩어지게 하다", "모으다", "축적하다", "저장하다"],
+            answer: 2
+        },
+        {
+            number: "132",
+            question: "BALMY의 반의어를 고르시오.",
+            options: ["clement", "genial", "moderate", "mild", "rough"],
+            koreanQuestion: "BALMY의 반의어를 고르시오.",
+            koreanOptions: ["온화한", "온화한", "온화한", "온화한", "거친"],
+            answer: 5
+        },
+        {
+            number: "133",
+            question: "MAGNANIMOUS의 반의어를 고르시오.",
+            options: ["generous", "lavish", "magnificent", "squalid", "profuse"],
+            koreanQuestion: "MAGNANIMOUS의 반의어를 고르시오.",
+            koreanOptions: ["관대한", "아낌없는", "웅장한", "누추한", "풍부한"],
+            answer: 4
+        },
+        {
+            number: "134",
+            question: "PROFLIGATE의 반의어를 고르시오.",
+            options: ["exorbitant", "prodigal", "spendthrift", "tightfisted", "wasteful"],
+            koreanQuestion: "PROFLIGATE의 반의어를 고르시오.",
+            koreanOptions: ["과도한", "낭비하는", "낭비하는", "인색한", "낭비하는"],
+            answer: 4
+        },
+        {
+            number: "135",
+            question: "ACRIMONIOUS의 반의어를 고르시오.",
+            options: ["sympathetic", "caustic", "trenchant", "acid", "mordant"],
+            koreanQuestion: "ACRIMONIOUS의 반의어를 고르시오.",
+            koreanOptions: ["공감하는", "신랄한", "신랄한", "신랄한", "신랄한"],
+            answer: 1
+        },
+        {
+            number: "136",
+            question: "EXTRAVAGANT의 반의어를 고르시오.",
+            options: ["wanton", "prodigal", "careless", "penny-pinching", "indulgent"],
+            koreanQuestion: "EXTRAVAGANT의 반의어를 고르시오.",
+            koreanOptions: ["제멋대로의", "낭비하는", "부주의한", "인색한", "관대한"],
+            answer: 4
+        },
+        {
+            number: "137",
+            question: "MISERLY의 반의어를 고르시오.",
+            options: ["profuse", "parsimonious", "penurious", "niggard", "closefisted"],
+            koreanQuestion: "MISERLY의 반의어를 고르시오.",
+            koreanOptions: ["풍부한", "인색한", "가난한", "인색한", "인색한"],
+            answer: 1
+        },
+        {
+            number: "138",
+            question: "FRUGAL의 반의어를 고르시오.",
+            options: ["husbanding", "conseving", "squandering", "preserving", "saving"],
+            koreanQuestion: "FRUGAL의 반의어를 고르시오.",
+            koreanOptions: ["아끼는", "절약하는", "낭비하는", "보존하는", "절약하는"],
+            answer: 3
+        },
+        {
+            number: "139",
+            question: "AFFABLE의 반의어를 고르시오.",
+            options: ["genial", "suave", "impolite", "bland", "amicable"],
+            koreanQuestion: "AFFABLE의 반의어를 고르시오.",
+            koreanOptions: ["상냥한", "세련된", "무례한", "온화한", "우호적인"],
+            answer: 3
+        },
+        {
+            number: "140",
+            question: "SQUANDER의 반의어를 고르시오.",
+            options: ["dissipate", "waste", "overspend", "overindulge", "scrimp"],
+            koreanQuestion: "SQUANDER의 반의어를 고르시오.",
+            koreanOptions: ["낭비하다", "낭비하다", "과소비하다", "과도하게 탐닉하다", "절약하다"],
+            answer: 5
+        },
+        {
+            number: "141",
+            question: "IMPROMPTU의 반의어를 고르시오.",
+            options: ["unrehearsed", "extemporaneous", "offhand", "extempore", "intended"],
+            koreanQuestion: "IMPROMPTU의 반의어를 고르시오.",
+            koreanOptions: ["사전에 연습하지 않은", "즉흥적인", "즉흥적인", "즉흥적인", "계획된"],
+            answer: 5
+        },
+        {
+            number: "142",
+            question: "SEDENTARY의 반의어를 고르시오.",
+            options: ["quiescent", "settled", "motionless", "kinetic", "stationary"],
+            koreanQuestion: "SEDENTARY의 반의어를 고르시오.",
+            koreanOptions: ["정지한", "정착한", "움직이지 않는", "운동성의", "정지한"],
+            answer: 4
+        },
+        {
+            number: "143",
+            question: "DISCREET의 반의어를 고르시오.",
+            options: ["shortsighted", "thoughtful", "judicious", "prudent", "deliberate"],
+            koreanQuestion: "DISCREET의 반의어를 고르시오.",
+            koreanOptions: ["근시안적인", "사려 깊은", "사려 깊은", "신중한", "신중한"],
+            answer: 1
+        },
+        {
+            number: "144",
+            question: "SIFT의 반의어를 고르시오.",
+            options: ["overhaul", "peruse", "remiss", "bolt", "plumb"],
+            koreanQuestion: "SIFT의 반의어를 고르시오.",
+            koreanOptions: ["점검하다", "정독하다", "태만한", "돌진하다", "깊이를 재다"],
+            answer: 3
+        },
+        {
+            number: "145",
+            question: "GLIMPSE의 반의어를 고르시오.",
+            options: ["peep", "glancing", "blink", "stare", "scan"],
+            koreanQuestion: "GLIMPSE의 반의어를 고르시오.",
+            koreanOptions: ["훔쳐보다", "힐끗 보는", "깜박이다", "응시하다", "훑어보다"],
+            answer: 4
+        },
+        {
+            number: "146",
+            question: "SOBER의 반의어를 고르시오.",
+            options: ["grave", "serious", "farcical", "staid", "earnest"],
+            koreanQuestion: "SOBER의 반의어를 고르시오.",
+            koreanOptions: ["심각한", "심각한", "우스꽝스러운", "진지한", "성실한"],
+            answer: 3
+        },
+        {
+            number: "147",
+            question: "SQUEAMISH의 반의어를 고르시오.",
+            options: ["lenient", "meticulous", "fastidious", "demanding", "finicky"],
+            koreanQuestion: "SQUEAMISH의 반의어를 고르시오.",
+            koreanOptions: ["관대한", "꼼꼼한", "까다로운", "요구하는", "까다로운"],
+            answer: 1
+        },
+        {
+            number: "148",
+            question: "IMPETUOUS의 반의어를 고르시오.",
+            options: ["skittish", "impudent", "brash", "reckless", "precipitous"],
+            koreanQuestion: "IMPETUOUS의 반의어를 고르시오.",
+            koreanOptions: ["겁 많은", "뻔뻔한", "무모한", "무모한", "가파른"],
+            answer: 1
+        },
+        {
+            number: "149",
+            question: "PERFUNCTORY의 반의어를 고르시오.",
+            options: ["nonchalant", "cursory", "unconcerned", "lukewarm", "crude"],
+            koreanQuestion: "PERFUNCTORY의 반의어를 고르시오.",
+            koreanOptions: ["무관심한", "피상적인", "무관심한", "미지근한", "조잡한"],
+            answer: 5
+        },
+        {
+            number: "150",
+            question: "REMISS의 반의어를 고르시오.",
+            options: ["lax", "painstaking", "delinquent", "negligent", "supine"],
+            koreanQuestion: "REMISS의 반의어를 고르시오.",
+            koreanOptions: ["느슨한", "고심하는", "의무 불이행의", "태만한", "나태한"],
+            answer: 2
+        },
+        {
+            number: "151",
+            question: "SCRUPULOUS의 반의어를 고르시오.",
+            options: ["neglectful", "punctilious", "assiduous", "conscientious", "meticulous"],
+            koreanQuestion: "SCRUPULOUS의 반의어를 고르시오.",
+            koreanOptions: ["태만한", "꼼꼼한", "성실한", "양심적인", "꼼꼼한"],
+            answer: 1
+        },
+        {
+            number: "152",
+            question: "HEEDFUL의 반의어를 고르시오.",
+            options: ["chary", "venturesome", "advertent", "circumspect", "wary"],
+            koreanQuestion: "HEEDFUL의 반의어를 고르시오.",
+            koreanOptions: ["조심하는", "모험적인", "주의 깊은", "신중한", "조심하는"],
+            answer: 2
+        },
+        {
+            number: "153",
+            question: "ALERT의 반의어를 고르시오.",
+            options: ["dazed", "vigilant", "watchful", "chary", "observant"],
+            koreanQuestion: "ALERT의 반의어를 고르시오.",
+            koreanOptions: ["멍한", "경계하는", "경계하는", "조심하는", "관찰하는"],
+            answer: 1
+        },
+        {
+            number: "154",
+            question: "EXTEMPORIZE의 반의어를 고르시오.",
+            options: ["spontaneous", "improvise", "ad-lib", "offhand", "arrange"],
+            koreanQuestion: "EXTEMPORIZE의 반의어를 고르시오.",
+            koreanOptions: ["자발적인", "즉흥적으로 하다", "즉흥적으로 말하다", "즉흥적인", "준비하다"],
+            answer: 5
+        },
+        {
+            number: "155",
+            question: "PLUMB의 반의어를 고르시오.",
+            options: ["scrutinize", "oversee", "skim", "probe", "examine"],
+            koreanQuestion: "PLUMB의 반의어를 고르시오.",
+            koreanOptions: ["자세히 조사하다", "감독하다", "훑어보다", "조사하다", "검토하다"],
+            answer: 3
+        },
+        {
+            number: "156",
+            question: "SKIM의 반의어를 고르시오.",
+            options: ["inspect", "glimpse", "scan", "glance (at)", "look over"],
+            koreanQuestion: "SKIM의 반의어를 고르시오.",
+            koreanOptions: ["자세히 조사하다", "힐끗 보다", "훑어보다", "흘긋 보다", "훑어보다"],
+            answer: 1
+        },
+        {
+            number: "157",
+            question: "ERRANT의 반의어를 고르시오.",
+            options: ["motile", "vagrant", "nomadic", "mobile", "static"],
+            koreanQuestion: "ERRANT의 반의어를 고르시오.",
+            koreanOptions: ["움직일 수 있는", "방랑하는", "유목의", "움직이는", "정지한"],
+            answer: 5
+        },
+        {
+            number: "158",
+            question: "FINICAL의 반의어를 고르시오.",
+            options: ["overscrupulous", "fussy", "delicate", "laid-back", "pernickety"],
+            koreanQuestion: "FINICAL의 반의어를 고르시오.",
+            koreanOptions: ["지나치게 꼼꼼한", "까다로운", "섬세한", "느긋한", "까다로운"],
+            answer: 4
+        },
+        {
+            number: "159",
+            question: "MOTILE의 반의어를 고르시오.",
+            options: ["vagabond", "wandering", "itinerant", "settled", "ambulatory"],
+            koreanQuestion: "MOTILE의 반의어를 고르시오.",
+            koreanOptions: ["방랑자", "방랑하는", "순회하는", "정착한", "보행의"],
+            answer: 4
+        },
+        {
+            number: "160",
+            question: "SLIPSHOD의 반의어를 고르시오.",
+            options: ["heedless", "impulsive", "considerate", "precipitant", "headlong"],
+            koreanQuestion: "SLIPSHOD의 반의어를 고르시오.",
+            koreanOptions: ["부주의한", "충동적인", "사려 깊은", "성급한", "무모한"],
+            answer: 3
+        },
+        {
+            number: "161",
+            question: "UNOSTENTATIOUS의 반의어를 고르시오.",
+            options: ["hubristic", "humility", "lowly", "unpresumptuous", "humble"],
+            koreanQuestion: "UNOSTENTATIOUS의 반의어를 고르시오.",
+            koreanOptions: ["오만한", "겸손", "천한", "주제넘지 않은", "겸손한"],
+            answer: 1
+        },
+        {
+            number: "162",
+            question: "IMPERIOUS의 반의어를 고르시오.",
+            options: ["arrogant", "perky", "impudent", "supercilious", "meek"],
+            koreanQuestion: "IMPERIOUS의 반의어를 고르시오.",
+            koreanOptions: ["오만한", "활기찬", "뻔뻔한", "거만한", "온순한"],
+            answer: 5
+        },
+        {
+            number: "163",
+            question: "SYCOPHANT의 반의어를 고르시오.",
+            options: ["toady", "flatterer", "lackey", "apple-polisher", "belittle"],
+            koreanQuestion: "SYCOPHANT의 반의어를 고르시오.",
+            koreanOptions: ["아첨꾼", "아첨꾼", "하인", "아첨꾼", "경시하다"],
+            answer: 5
+        },
+        {
+            number: "164",
+            question: "CHUTZPA(H)의 반의어를 고르시오.",
+            options: ["effrontery", "diffidence", "audacity", "rudeness", "hubris"],
+            koreanQuestion: "CHUTZPA(H)의 반의어를 고르시오.",
+            koreanOptions: ["철면피", "소심함", "대담함", "무례함", "오만"],
+            answer: 2
+        },
+        {
+            number: "165",
+            question: "LOUTISH의 반의어를 고르시오.",
+            options: ["uncouth", "unrefined", "bestial", "cultivated", "vulgar"],
+            koreanQuestion: "LOUTISH의 반의어를 고르시오.",
+            koreanOptions: ["촌스러운", "세련되지 않은", "야만적인", "교양 있는", "저속한"],
+            answer: 4
+        },
+        {
+            number: "166",
+            question: "ORNAMENT의 반의어를 고르시오.",
+            options: ["decoration", "adornment", "trim", "embellishment", "blemish"],
+            koreanQuestion: "ORNAMENT의 반의어를 고르시오.",
+            koreanOptions: ["장식", "장식", "장식", "장식", "흠"],
+            answer: 5
+        },
+        {
+            number: "167",
+            question: "SEVERE의 반의어를 고르시오.",
+            options: ["stark", "austere", "easygoing", "spartan", "plain"],
+            koreanQuestion: "SEVERE의 반의어를 고르시오.",
+            koreanOptions: ["완전한", "엄격한", "느긋한", "간소한", "평범한"],
+            answer: 3
+        },
+        {
+            number: "168",
+            question: "BRAZEN의 반의어를 고르시오.",
+            options: ["insolent", "supercilious", "arrogant", "courteous", "haughty"],
+            koreanQuestion: "BRAZEN의 반의어를 고르시오.",
+            koreanOptions: ["무례한", "거만한", "오만한", "정중한", "오만한"],
+            answer: 4
+        },
+        {
+            number: "169",
+            question: "INGRATIATE의 반의어를 고르시오.",
+            options: ["insult", "curry favor", "flatter", "fawn", "adulate"],
+            koreanQuestion: "INGRATIATE의 반의어를 고르시오.",
+            koreanOptions: ["모욕하다", "환심을 사다", "아첨하다", "아첨하다", "아첨하다"],
+            answer: 1
+        },
+        {
+            number: "170",
+            question: "MINCE의 반의어를 고르시오.",
+            options: ["strut", "pontificate", "swagger", "drag", "stalk"],
+            koreanQuestion: "MINCE의 반의어를 고르시오.",
+            koreanOptions: ["뽐내며 걷다", "거들먹거리며 말하다", "으스대며 걷다", "질질 끌다", "점잔 빼며 걷다"],
+            answer: 4
+        },
+        {
+            number: "171",
+            question: "VAIN의 반의어를 고르시오.",
+            options: ["self-important", "self-critical", "smug", "complacent", "high-handed"],
+            koreanQuestion: "VAIN의 반의어를 고르시오.",
+            koreanOptions: ["자만심이 강한", "자기비판적인", "자만심이 강한", "자기만족적인", "고압적인"],
+            answer: 2
+        },
+        {
+            number: "172",
+            question: "GARISH의 반의어를 고르시오.",
+            options: ["elaborate", "florid", "modest", "ornate", "flamboyant"],
+            koreanQuestion: "GARISH의 반의어를 고르시오.",
+            koreanOptions: ["정교한", "화려한", "수수한", "화려하게 장식된", "화려한"],
+            answer: 3
+        },
+        {
+            number: "173",
+            question: "SMARMY의 반의어를 고르시오.",
+            options: ["lordly", "truckling", "servile", "slavish", "obsequious"],
+            koreanQuestion: "SMARMY의 반의어를 고르시오.",
+            koreanOptions: ["오만한", "굽실거리는", "굽실거리는", "노예 같은", "아첨하는"],
+            answer: 1
+        },
+        {
+            number: "174",
+            question: "INURBANE의 반의어를 고르시오.",
+            options: ["tactless", "boorish", "sophisticated", "cloddish", "churlish"],
+            koreanQuestion: "INURBANE의 반의어를 고르시오.",
+            koreanOptions: ["무뚝뚝한", "촌스러운", "세련된", "투박한", "무례한"],
+            answer: 3
+        },
+        {
+            number: "175",
+            question: "PROPER의 반의어를 고르시오.",
+            options: ["urbane", "unmannerly", "decent", "civil", "complaisant"],
+            koreanQuestion: "PROPER의 반의어를 고르시오.",
+            koreanOptions: ["세련된", "버릇없는", "괜찮은", "정중한", "고분고분한"],
+            answer: 2
+        },
+        {
+            number: "176",
+            question: "FLAUNT의 반의어를 고르시오.",
+            options: ["disguise", "boast", "showy", "vaunt", "brag"],
+            koreanQuestion: "FLAUNT의 반의어를 고르시오.",
+            koreanOptions: ["감추다", "자랑하다", "화려한", "뽐내다", "자랑하다"],
+            answer: 1
+        },
+        {
+            number: "177",
+            question: "FLOURISHING의 반의어를 고르시오.",
+            options: ["showy", "garish", "conservative", "ostentatious", "luxuriant"],
+            koreanQuestion: "FLOURISHING의 반의어를 고르시오.",
+            koreanOptions: ["화려한", "화려한", "보수적인", "과시적인", "무성한"],
+            answer: 3
+        },
+        {
+            number: "178",
+            question: "TOADY의 반의어를 고르시오.",
+            options: ["blandish", "flatter", "ingratiate", "tease", "lackey"],
+            koreanQuestion: "TOADY의 반의어를 고르시오.",
+            koreanOptions: ["아첨하다", "아첨하다", "환심을 사다", "괴롭히다", "아첨꾼"],
+            answer: 4
+        },
+        {
+            number: "179",
+            question: "SMUG의 반의어를 고르시오.",
+            options: ["self-satisfied", "gloat", "conceited", "smirk", "unassertive"],
+            koreanQuestion: "SMUG의 반의어를 고르시오.",
+            koreanOptions: ["자기만족적인", "고소해하다", "자만심이 강한", "자만심이 강한 웃음", "자기주장이 없는"],
+            answer: 5
+        },
+        {
+            number: "180",
+            question: "PERT의 반의어를 고르시오.",
+            options: ["solemn", "insolent", "haughty", "imperious", "saucy"],
+            koreanQuestion: "PERT의 반의어를 고르시오.",
+            koreanOptions: ["진지한", "무례한", "오만한", "오만한", "뻔뻔한"],
+            answer: 1
+        },
+        {
+            number: "181",
+            question: "SHRIVEL의 반의어를 고르시오.",
+            options: ["flinch", "wince", "shrink", "approach", "recoil"],
+            koreanQuestion: "SHRIVEL의 반의어를 고르시오.",
+            koreanOptions: ["움찔하다", "움찔하다", "줄어들다", "접근하다", "움찔하다"],
+            answer: 4
+        },
+        {
+            number: "182",
+            question: "SWALLOW의 반의어를 고르시오.",
+            options: ["abstain", "inhibit", "excessive", "continenc", "moderate"],
+            koreanQuestion: "SWALLOW의 반의어를 고르시오.",
+            koreanOptions: ["삼가다", "억제하다", "과도한", "자제", "절제하다"],
+            answer: 1
+        },
+        {
+            number: "183",
+            question: "LEWD의 반의어를 고르시오.",
+            options: ["wanton", "prurient", "innocuous", "libidinous", "bawdy"],
+            koreanQuestion: "LEWD의 반의어를 고르시오.",
+            koreanOptions: ["음탕한", "음란한", "해롭지 않은", "색정적인", "외설적인"],
+            answer: 3
+        },
+        {
+            number: "184",
+            question: "CELIBATE의 반의어를 고르시오.",
+            options: ["gluttonous", "teetotaler", "stoic", "ascetic", "abstinent"],
+            koreanQuestion: "CELIBATE의 반의어를 고르시오.",
+            koreanOptions: ["탐욕스러운", "금주가", "금욕주의자", "금욕적인", "절제하는"],
+            answer: 1
+        },
+        {
+            number: "185",
+            question: "REPROBATE의 반의어를 고르시오.",
+            options: ["corrupt", "sybarite", "degenerate", "dissolute", "virtuous"],
+            koreanQuestion: "REPROBATE의 반의어를 고르시오.",
+            koreanOptions: ["타락한", "쾌락주의자", "타락한", "방탕한", "덕 있는"],
+            answer: 5
+        },
+        {
+            number: "186",
+            question: "HEARTEN의 반의어를 고르시오.",
+            options: ["encourage", "inspire", "embolden", "hamstring", "buoy (up)"],
+            koreanQuestion: "HEARTEN의 반의어를 고르시오.",
+            koreanOptions: ["격려하다", "고취하다", "대담하게 하다", "무력하게 하다", "기운을 북돋다"],
+            answer: 4
+        },
+        {
+            number: "187",
+            question: "PUSILLANIMOUS의 반의어를 고르시오.",
+            options: ["cowardly", "timid", "craven", "trepid", "audacious"],
+            koreanQuestion: "PUSILLANIMOUS의 반의어를 고르시오.",
+            koreanOptions: ["겁 많은", "소심한", "겁 많은", "겁 많은", "대담한"],
+            answer: 5
+        },
+        {
+            number: "188",
+            question: "PROWL의 반의어를 고르시오.",
+            options: ["unmanly", "brave", "courageous", "plucky", "mettlesome"],
+            koreanQuestion: "PROWL의 반의어를 고르시오.",
+            koreanOptions: ["사내답지 못한", "용감한", "용감한", "용감한", "기운찬"],
+            answer: 1
+        },
+        {
+            number: "189",
+            question: "CRESTFALLEN의 반의어를 고르시오.",
+            options: ["dejected", "downcast", "enraptured", "damped", "dispirited"],
+            koreanQuestion: "CRESTFALLEN의 반의어를 고르시오.",
+            koreanOptions: ["낙담한", "낙담한", "황홀한", "낙담한", "낙담한"],
+            answer: 3
+        },
+        {
+            number: "190",
+            question: "FORBEAR의 반의어를 고르시오.",
+            options: ["contain", "smolder", "acquiesce (to)", "refrain", "restraint"],
+            koreanQuestion: "FORBEAR의 반의어를 고르시오.",
+            koreanOptions: ["억제하다", "울화를 참다", "묵인하다", "삼가다", "자제"],
+            answer: 3
+        },
+        {
+            number: "191",
+            question: "STOIC의 반의어를 고르시오.",
+            options: ["rebellious", "abstinent", "temperate", "ascetic", "moderate"],
+            koreanQuestion: "STOIC의 반의어를 고르시오.",
+            koreanOptions: ["반항적인", "금욕적인", "절제하는", "금욕적인", "온건한"],
+            answer: 1
+        },
+        {
+            number: "192",
+            question: "HECTOR의 반의어를 고르시오.",
+            options: ["dishearten", "reassure", "browbeat", "menace", "bully"],
+            koreanQuestion: "HECTOR의 반의어를 고르시오.",
+            koreanOptions: ["낙담시키다", "안심시키다", "위협하다", "위협하다", "괴롭히다"],
+            answer: 2
+        },
+        {
+            number: "193",
+            question: "HEDONIST의 반의어를 고르시오.",
+            options: ["degenerate", "reprobate", "ascetic", "sybarite", "epicure"],
+            koreanQuestion: "HEDONIST의 반의어를 고르시오.",
+            koreanOptions: ["타락한", "타락한 사람", "금욕주의자", "쾌락주의자", "미식가"],
+            answer: 3
+        },
+        {
+            number: "194",
+            question: "SELFINDULGENT의 반의어를 고르시오.",
+            options: ["disciplined", "hedonistic", "indulgent", "decadent", "luxurious"],
+            koreanQuestion: "SELFINDULGENT의 반의어를 고르시오.",
+            koreanOptions: ["훈련된", "쾌락주의적인", "관대한", "퇴폐적인", "호화로운"],
+            answer: 1
+        },
+        {
+            number: "195",
+            question: "MENACING의 반의어를 고르시오.",
+            options: ["threatening", "minatory", "dire", "benign", "baleful"],
+            koreanQuestion: "MENACING의 반의어를 고르시오.",
+            koreanOptions: ["위협적인", "위협적인", "불길한", "상냥한", "해로운"],
+            answer: 4
+        },
+        {
+            number: "196",
+            question: "BOLD의 반의어를 고르시오.",
+            options: ["intrepid", "poltroon", "fearless", "audacious", "dauntless"],
+            koreanQuestion: "BOLD의 반의어를 고르시오.",
+            koreanOptions: ["용맹한", "겁쟁이", "겁 없는", "대담한", "굴하지 않는"],
+            answer: 2
+        },
+        {
+            number: "197",
+            question: "TEETOTALISM의 반의어를 고르시오.",
+            options: ["defiant", "ascetical", "abstemious", "temperate", "stoical"],
+            koreanQuestion: "TEETOTALISM의 반의어를 고르시오.",
+            koreanOptions: ["반항적인", "금욕적인", "절제하는", "절제하는", "금욕적인"],
+            answer: 1
+        },
+        {
+            number: "198",
+            question: "DAMPENED의 반의어를 고르시오.",
+            options: ["depressed", "disheartened", "despondent", "downcast", "desiccate"],
+            koreanQuestion: "DAMPENED의 반의어를 고르시오.",
+            koreanOptions: ["우울한", "낙담한", "낙담한", "의기소침한", "건조시키다"],
+            answer: 5
+        },
+        {
+            number: "199",
+            question: "LASCIVIOUS의 반의어를 고르시오.",
+            options: ["promiscuous", "lewd", "puritanical", "lecherous", "filthy"],
+            koreanQuestion: "LASCIVIOUS의 반의어를 고르시오.",
+            koreanOptions: ["문란한", "음탕한", "청교도적인", "호색적인", "더러운"],
+            answer: 3
+        },
+        {
+            number: "200",
+            question: "INTIMIDATE의 반의어를 고르시오.",
+            options: ["hearten", "threaten", "bluster", "discourage", "cow"],
+            koreanQuestion: "INTIMIDATE의 반의어를 고르시오.",
+            koreanOptions: ["용기를 북돋다", "위협하다", "허세 부리다", "낙담시키다", "위협하다"],
+            answer: 1
+        },
+        {
+            number: "201",
+            question: "PERENNIAL의 반의어를 고르시오.",
+            options: ["outdated", "permanent", "lasting", "perpetual", "enduring"],
+            koreanQuestion: "PERENNIAL의 반의어를 고르시오.",
+            koreanOptions: ["구식의", "영구적인", "지속적인", "영원한", "지속적인"],
+            answer: 1
+        },
+        {
+            number: "202",
+            question: "PERSEVERE의 반의어를 고르시오.",
+            options: ["carry on", "persist", "endure", "give in", "keep up"],
+            koreanQuestion: "PERSEVERE의 반의어를 고르시오.",
+            koreanOptions: ["계속하다", "끈기 있게 계속하다", "견디다", "굴복하다", "따라잡다"],
+            answer: 4
+        },
+        {
+            number: "203",
+            question: "COUNTENANCE의 반의어를 고르시오.",
+            options: ["champion", "buttress", "restraint", "support", "reinforcement"],
+            koreanQuestion: "COUNTENANCE의 반의어를 고르시오.",
+            koreanOptions: ["지지하다", "지지하다", "억제", "지지하다", "강화"],
+            answer: 3
+        },
+        {
+            number: "204",
+            question: "FUGACIOUS의 반의어를 고르시오.",
+            options: ["ephemeral", "transient", "fleeting", "everlasting", "momentary"],
+            koreanQuestion: "FUGACIOUS의 반의어를 고르시오.",
+            koreanOptions: ["단명하는", "일시적인", "덧없는", "영원한", "순간적인"],
+            answer: 4
+        },
+        {
+            number: "205",
+            question: "RECIDIVISM의 반의어를 고르시오.",
+            options: ["interim", "chronic", "deep-rooted", "inveterate", "settled"],
+            koreanQuestion: "RECIDIVISM의 반의어를 고르시오.",
+            koreanOptions: ["일시적인", "만성적인", "뿌리 깊은", "고질적인", "정착된"],
+            answer: 1
+        },
+        {
+            number: "206",
+            question: "ABSCISSION의 반의어를 고르시오.",
+            options: ["repose", "cessation", "respite", "suspension", "bustle"],
+            koreanQuestion: "ABSCISSION의 반의어를 고르시오.",
+            koreanOptions: ["휴식", "중단", "휴식", "정지", "분주함"],
+            answer: 5
+        },
+        {
+            number: "207",
+            question: "DISCLAIM의 반의어를 고르시오.",
+            options: ["disown", "repudiate", "disavow", "renounce", "admit"],
+            koreanQuestion: "DISCLAIM의 반의어를 고르시오.",
+            koreanOptions: ["부인하다", "거부하다", "부인하다", "포기하다", "인정하다"],
+            answer: 5
+        },
+        {
+            number: "208",
+            question: "LIQUIDATE의 반의어를 고르시오.",
+            options: ["annul", "revoke", "nullity", "conserve", "abrogate"],
+            koreanQuestion: "LIQUIDATE의 반의어를 고르시오.",
+            koreanOptions: ["무효화하다", "철회하다", "무효", "보존하다", "폐지하다"],
+            answer: 4
+        },
+        {
+            number: "209",
+            question: "STABLE의 반의어를 고르시오.",
+            options: ["flexible", "constant", "perpetuated", "unremitting", "incessant"],
+            koreanQuestion: "STABLE의 반의어를 고르시오.",
+            koreanOptions: ["유연한", "일정한", "영속적인", "끊임없는", "끊임없는"],
+            answer: 1
+        },
+        {
+            number: "210",
+            question: "INTERMITTENT의 반의어를 고르시오.",
+            options: ["casual", "fitful", "unsteady", "unrelenting", "occasional"],
+            koreanQuestion: "INTERMITTENT의 반의어를 고르시오.",
+            koreanOptions: ["우연한", "발작적인", "불안정한", "끊임없는", "가끔의"],
+            answer: 4
+        },
+        {
+            number: "211",
+            question: "INDELIBLE의 반의어를 고르시오.",
+            options: ["incurable", "penitent", "ineradicable", "irreparable", "incorrigible"],
+            koreanQuestion: "INDELIBLE의 반의어를 고르시오.",
+            koreanOptions: ["고칠 수 없는", "뉘우치는", "없앨 수 없는", "수리할 수 없는", "교정 불가능한"],
+            answer: 2
+        },
+        {
+            number: "212",
+            question: "MORATORIUM의 반의어를 고르시오.",
+            options: ["abscission", "surcease", "probation", "reprieve", "renewal"],
+            koreanQuestion: "MORATORIUM의 반의어를 고르시오.",
+            koreanOptions: ["절단", "중지", "보호관찰", "집행유예", "재개"],
+            answer: 5
+        },
+        {
+            number: "213",
+            question: "INGRAIN(ED)의 반의어를 고르시오.",
+            options: ["extraneous", "built-in", "inexterminable", "constitutional", "indelible"],
+            koreanQuestion: "INGRAIN(ED)의 반의어를 고르시오.",
+            koreanOptions: ["외부의", "내재된", "절멸할 수 없는", "타고난", "지울 수 없는"],
+            answer: 1
+        },
+        {
+            number: "214",
+            question: "ARMISTICE의 반의어를 고르시오.",
+            options: ["cease-fire", "reconciliation", "hostilities", "truce", "peacetime"],
+            koreanQuestion: "ARMISTICE의 반의어를 고르시오.",
+            koreanOptions: ["휴전", "화해", "적대 행위", "휴전", "평화로운 시간"],
+            answer: 3
+        },
+        {
+            number: "215",
+            question: "UNREMITTING의 반의어를 고르시오.",
+            options: ["noncontinuous", "perpetual", "nonstop", "eternal", "perennial"],
+            koreanQuestion: "UNREMITTING의 반의어를 고르시오.",
+            koreanOptions: ["지속적이지 않은", "영구적인", "끊임없는", "영원한", "영원한"],
+            answer: 1
+        },
+        {
+            number: "216",
+            question: "SPORADIC의 반의어를 고르시오.",
+            options: ["irregular", "spasmodic", "occasional", "Incidental", "stationary"],
+            koreanQuestion: "SPORADIC의 반의어를 고르시오.",
+            koreanOptions: ["불규칙적인", "발작적인", "가끔의", "우발적인", "정지한"],
+            answer: 5
+        },
+        {
+            number: "217",
+            question: "ESPOUSE의 반의어를 고르시오.",
+            options: ["boost", "advocate", "belittle", "backup", "uphold"],
+            koreanQuestion: "ESPOUSE의 반의어를 고르시오.",
+            koreanOptions: ["증진시키다", "지지하다", "경시하다", "지원", "지지하다"],
+            answer: 3
+        },
+        {
+            number: "218",
+            question: "REPEAL의 반의어를 고르시오.",
+            options: ["abolish", "retract", "legislate", "recant", "rescind"],
+            koreanQuestion: "REPEAL의 반의어를 고르시오.",
+            koreanOptions: ["폐지하다", "취소하다", "제정하다", "철회하다", "폐지하다"],
+            answer: 3
+        },
+        {
+            number: "219",
+            question: "TRANSITORY의 반의어를 고르시오.",
+            options: ["persistent", "evanescent", "vanishing", "fugitive", "fugitive"],
+            koreanQuestion: "TRANSITORY의 반의어를 고르시오.",
+            koreanOptions: ["끈기 있는", "덧없는", "사라지는", "도피하는", "도피하는"],
+            answer: 1
+        },
+        {
+            number: "220",
+            question: "ABNEGATE의 반의어를 고르시오.",
+            options: ["repudiate", "confiscate", "cede", "relinquish", "resign"],
+            koreanQuestion: "ABNEGATE의 반의어를 고르시오.",
+            koreanOptions: ["거부하다", "몰수하다", "양도하다", "포기하다", "사임하다"],
+            answer: 2
+        },
+        {
+            number: "221",
+            question: "CRUX의 반의어를 고르시오.",
+            options: ["core", "pith", "essence", "gist", "margin"],
+            koreanQuestion: "CRUX의 반의어를 고르시오.",
+            koreanOptions: ["핵심", "핵심", "본질", "요점", "여백"],
+            answer: 5
+        },
+        {
+            number: "222",
+            question: "TRIFLE의 반의어를 고르시오.",
+            options: ["trivia", "bit", "whopper", "picayune", "mite"],
+            koreanQuestion: "TRIFLE의 반의어를 고르시오.",
+            koreanOptions: ["하찮은 것", "조금", "엄청난 것", "하찮은", "아주 작은 것"],
+            answer: 3
+        },
+        {
+            number: "223",
+            question: "APPROPRIATE의 반의어를 고르시오.",
+            options: ["material", "apt", "befitting", "suitable", "unqualified"],
+            koreanQuestion: "APPROPRIATE의 반의어를 고르시오.",
+            koreanOptions: ["중요한", "적절한", "적절한", "적절한", "자격 없는"],
+            answer: 5
+        },
+        {
+            number: "224",
+            question: "NUGATORY의 반의어를 고르시오.",
+            options: ["chief", "trivial", "inconsequential", "fiddling", "insignificant"],
+            koreanQuestion: "NUGATORY의 반의어를 고르시오.",
+            koreanOptions: ["주요한", "하찮은", "하찮은", "하찮은", "하찮은"],
+            answer: 1
+        },
+        {
+            number: "225",
+            question: "INAPPOSITE의 반의어를 고르시오.",
+            options: ["improper", "impertinent", "irrelevant", "suitable", "extrinsic"],
+            koreanQuestion: "INAPPOSITE의 반의어를 고르시오.",
+            koreanOptions: ["부적절한", "부적절한", "관련 없는", "적합한", "외부의"],
+            answer: 4
+        },
+        {
+            number: "226",
+            question: "EXTRINSIC의 반의어를 고르시오.",
+            options: ["inappropriate", "deep-seated", "extraneous", "immaterial", "inapposite"],
+            koreanQuestion: "EXTRINSIC의 반의어를 고르시오.",
+            koreanOptions: ["부적절한", "뿌리 깊은", "외부의", "비물질적인", "부적절한"],
+            answer: 2
+        },
+        {
+            number: "227",
+            question: "VITAL의 반의어를 고르시오.",
+            options: ["essential", "crucial", "pithy", "delicate", "organic"],
+            koreanQuestion: "VITAL의 반의어를 고르시오.",
+            koreanOptions: ["필수적인", "결정적인", "간결한", "섬세한", "유기적인"],
+            answer: 3
+        },
+        {
+            number: "228",
+            question: "PITTANCE의 반의어를 고르시오.",
+            options: ["dime", "shoestring", "nonentity", "mite", "bonanza"],
+            koreanQuestion: "PITTANCE의 반의어를 고르시오.",
+            koreanOptions: ["푼돈", "푼돈", "하찮은 존재", "아주 작은 것", "대박"],
+            answer: 5
+        },
+        {
+            number: "229",
+            question: "TRIFLING의 반의어를 고르시오.",
+            options: ["remarkable", "insignificant", "little", "slight", "unimportant"],
+            koreanQuestion: "TRIFLING의 반의어를 고르시오.",
+            koreanOptions: ["주목할만한", "하찮은", "작은", "약간의", "중요하지 않은"],
+            answer: 1
+        },
+        {
+            number: "230",
+            question: "AUXILIARY의 반의어를 고르시오.",
+            options: ["peripheral", "accessory", "supplementary", "fundamental", "accessorial"],
+            koreanQuestion: "AUXILIARY의 반의어를 고르시오.",
+            koreanOptions: ["주변의", "보조적인", "보충적인", "기본적인", "보조적인"],
+            answer: 4
+        },
+        {
+            number: "231",
+            question: "CONSEQUENTIAL의 반의어를 고르시오.",
+            options: ["eventful", "significant", "historic", "negligible", "momentous"],
+            koreanQuestion: "CONSEQUENTIAL의 반의어를 고르시오.",
+            koreanOptions: ["파란만장한", "중요한", "역사적인", "하찮은", "중요한"],
+            answer: 4
+        },
+        {
+            number: "232",
+            question: "INDISPENSABLE의 반의어를 고르시오.",
+            options: ["imperative", "extra", "critical", "mandatory", "integral"],
+            koreanQuestion: "INDISPENSABLE의 반의어를 고르시오.",
+            koreanOptions: ["필수적인", "불필요한", "결정적인", "의무적인", "필수적인"],
+            answer: 2
+        },
+        {
+            number: "233",
+            question: "GERMANE의 반의어를 고르시오.",
+            options: ["intrinsic", "pertinent", "applicable", "relative", "frivolous"],
+            koreanQuestion: "GERMANE의 반의어를 고르시오.",
+            koreanOptions: ["본질적인", "적절한", "적용 가능한", "관련된", "하찮은"],
+            answer: 5
+        },
+        {
+            number: "234",
+            question: "BAGATELLE의 반의어를 고르시오.",
+            options: ["measurable", "trifle", "triviality", "picayune", "bauble"],
+            koreanQuestion: "BAGATELLE의 반의어를 고르시오.",
+            koreanOptions: ["측정 가능한", "하찮은 것", "하찮은 것", "하찮은", "장난감"],
+            answer: 1
+        },
+        {
+            number: "235",
+            question: "INHERENT의 반의어를 고르시오.",
+            options: ["external", "constitutive", "hardwired", "relevant", "immanent"],
+            koreanQuestion: "INHERENT의 반의어를 고르시오.",
+            koreanOptions: ["외부의", "구성적인", "고착된", "관련된", "내재된"],
+            answer: 1
+        },
+        {
+            number: "236",
+            question: "SUBORDINATE의 반의어를 고르시오.",
+            options: ["ancillary", "subsidiary", "primary", "peripheral", "secondary"],
+            koreanQuestion: "SUBORDINATE의 반의어를 고르시오.",
+            koreanOptions: ["보조적인", "보조적인", "주요한", "주변의", "부차적인"],
+            answer: 3
+        },
+        {
+            number: "237",
+            question: "SLIGHT의 반의어를 고르시오.",
+            options: ["frivolous", "nugatory", "immaterial", "worthwhile", "minute"],
+            koreanQuestion: "SLIGHT의 반의어를 고르시오.",
+            koreanOptions: ["하찮은", "하찮은", "하찮은", "가치 있는", "아주 작은"],
+            answer: 4
+        },
+        {
+            number: "238",
+            question: "PROPER의 반의어를 고르시오.",
+            options: ["inherent", "befitting", "apposite", "correct", "barred"],
+            koreanQuestion: "PROPER의 반의어를 고르시오.",
+            koreanOptions: ["본질적인", "적절한", "적절한", "올바른", "금지된"],
+            answer: 5
+        },
+        {
+            number: "239",
+            question: "CARDINAL의 반의어를 고르시오.",
+            options: ["predominant", "principal", "major", "collateral", "sovereign"],
+            koreanQuestion: "CARDINAL의 반의어를 고르시오.",
+            koreanOptions: ["주요한", "주요한", "주요한", "부차적인", "주권의"],
+            answer: 4
+        },
+        {
+            number: "240",
+            question: "SUBSTANTIVE의 반의어를 고르시오.",
+            options: ["measly", "considerable", "material", "substantial", "sizable"],
+            koreanQuestion: "SUBSTANTIVE의 반의어를 고르시오.",
+            koreanOptions: ["보잘것없는", "상당한", "물질적인", "상당한", "상당한"],
+            answer: 1
+        },
+        {
+            number: "241",
+            question: "GENEROUS의 반의어를 고르시오.",
+            options: ["magnanimous", "liberal", "skimpy", "munificent", "profuse"],
+            koreanQuestion: "GENEROUS의 반의어를 고르시오.",
+            koreanOptions: ["관대한", "관대한", "인색한", "관대한", "풍부한"],
+            answer: 3
+        },
+        {
+            number: "242",
+            question: "DIFFUSE의 반의어를 고르시오.",
+            options: ["disperse", "disseminate", "intersperse", "circuitous", "briel"],
+            koreanQuestion: "DIFFUSE의 반의어를 고르시오.",
+            koreanOptions: ["분산시키다", "널리 퍼뜨리다", "흩뿌리다", "우회적인", "간결한"],
+            answer: 5
+        },
+        {
+            number: "243",
+            question: "SWELL의 반의어를 고르시오.",
+            options: ["wrinkled", "dilate", "balloon", "distend", "extend"],
+            koreanQuestion: "SWELL의 반의어를 고르시오.",
+            koreanOptions: ["주름진", "확장되다", "풍선처럼 부풀다", "부풀다", "확장하다"],
+            answer: 1
+        },
+        {
+            number: "244",
+            question: "ABRIDGE의 반의어를 고르시오.",
+            options: ["abbreviate", "lengthen", "curtail", "retrench", "shorten"],
+            koreanQuestion: "ABRIDGE의 반의어를 고르시오.",
+            koreanOptions: ["축약하다", "늘이다", "축소하다", "절감하다", "단축하다"],
+            answer: 2
+        },
+        {
+            number: "245",
+            question: "HEAVE의 반의어를 고르시오.",
+            options: ["swell", "bloat", "dwindle", "expand", "bulge"],
+            koreanQuestion: "HEAVE의 반의어를 고르시오.",
+            koreanOptions: ["부풀다", "부풀다", "줄어들다", "확장하다", "부풀다"],
+            answer: 3
+        },
+        {
+            number: "246",
+            question: "DECRY의 반의어를 고르시오.",
+            options: ["eulogize", "belittle", "disparage", "understate", "underestimate"],
+            koreanQuestion: "DECRY의 반의어를 고르시오.",
+            koreanOptions: ["칭찬하다", "경시하다", "얕보다", "축소해서 말하다", "과소평가하다"],
+            answer: 1
+        },
+        {
+            number: "247",
+            question: "RANT의 반의어를 고르시오.",
+            options: ["grandiloquence", "brag", "understatement", "pomposity", "overestimate"],
+            koreanQuestion: "RANT의 반의어를 고르시오.",
+            koreanOptions: ["과장된 언행", "자랑", "절제된 표현", "허풍", "과대평가하다"],
+            answer: 3
+        },
+        {
+            number: "248",
+            question: "CONTRACT의 반의어를 고르시오.",
+            options: ["inflate", "compress", "shrink", "constrict", "condense"],
+            koreanQuestion: "CONTRACT의 반의어를 고르시오.",
+            koreanOptions: ["팽창시키다", "압축하다", "줄어들다", "수축시키다", "농축시키다"],
+            answer: 1
+        },
+        {
+            number: "249",
+            question: "STORE의 반의어를 고르시오.",
+            options: ["garner", "gather", "accumulate", "split", "hoard"],
+            koreanQuestion: "STORE의 반의어를 고르시오.",
+            koreanOptions: ["모으다", "모으다", "축적하다", "나누다", "모으다"],
+            answer: 4
+        },
+        {
+            number: "250",
+            question: "AUGMENT의 반의어를 고르시오.",
+            options: ["accelerate", "amplify", "enlarge", "aggrandize", "subtract"],
+            koreanQuestion: "AUGMENT의 반의어를 고르시오.",
+            koreanOptions: ["가속화하다", "증폭하다", "확대하다", "확대하다", "빼다"],
+            answer: 5
+        },
+        {
+            number: "251",
+            question: "TRUMPET의 반의어를 고르시오.",
+            options: ["announce", "promulgate", "conceal", "propagate", "proclaim"],
+            koreanQuestion: "TRUMPET의 반의어를 고르시오.",
+            koreanOptions: ["발표하다", "널리 알리다", "숨기다", "전파하다", "선포하다"],
+            answer: 3
+        },
+        {
+            number: "252",
+            question: "ABBREVIATE의 반의어를 고르시오.",
+            options: ["omit", "retrench", "syncopate", "extend", "curtail"],
+            koreanQuestion: "ABBREVIATE의 반의어를 고르시오.",
+            koreanOptions: ["생략하다", "절감하다", "생략하다", "늘이다", "축소하다"],
+            answer: 4
+        },
+        {
+            number: "253",
+            question: "DISCREDIT의 반의어를 고르시오.",
+            options: ["depreciate", "minimize", "underrate", "esteem", "decry"],
+            koreanQuestion: "DISCREDIT의 반의어를 고르시오.",
+            koreanOptions: ["가치를 떨어뜨리다", "최소화하다", "과소평가하다", "존경하다", "비난하다"],
+            answer: 4
+        },
+        {
+            number: "254",
+            question: "MAGNIFY의 반의어를 고르시오.",
+            options: ["overblow", "overestimate", "amplify", "overstate", "minimize"],
+            koreanQuestion: "MAGNIFY의 반의어를 고르시오.",
+            koreanOptions: ["과장하다", "과대평가하다", "증폭하다", "과장하다", "축소하다"],
+            answer: 5
+        },
+        {
+            number: "255",
+            question: "PROLONG의 반의어를 고르시오.",
+            options: ["extend", "diminish", "protract", "lengthen", "draw out"],
+            koreanQuestion: "PROLONG의 반의어를 고르시오.",
+            koreanOptions: ["연장하다", "줄이다", "연장하다", "늘이다", "늘이다"],
+            answer: 2
+        },
+        {
+            number: "256",
+            question: "BOMBAST의 반의어를 고르시오.",
+            options: ["belittlement", "overstatement", "pomposity", "turgidity", "gasconade"],
+            koreanQuestion: "BOMBAST의 반의어를 고르시오.",
+            koreanOptions: ["경시", "과장", "허풍", "과장된 표현", "허풍"],
+            answer: 1
+        },
+        {
+            number: "257",
+            question: "AMASS의 반의어를 고르시오.",
+            options: ["hoard", "garner", "accumulate", "disband", "assemble"],
+            koreanQuestion: "AMASS의 반의어를 고르시오.",
+            koreanOptions: ["축적하다", "모으다", "축적하다", "해산하다", "모으다"],
+            answer: 4
+        },
+        {
+            number: "258",
+            question: "HUSBANDING의 반의어를 고르시오.",
+            options: ["extravagant", "thrifty", "frugal", "economical", "frugal"],
+            koreanQuestion: "HUSBANDING의 반의어를 고르시오.",
+            koreanOptions: ["낭비하는", "절약하는", "절약하는", "경제적인", "절약하는"],
+            answer: 1
+        },
+        {
+            number: "259",
+            question: "OVERBLOWN의 반의어를 고르시오.",
+            options: ["overrate", "reasonable", "overemphasize", "magnify", "exaggerated"],
+            koreanQuestion: "OVERBLOWN의 반의어를 고르시오.",
+            koreanOptions: ["과대평가하다", "합리적인", "지나치게 강조하다", "확대하다", "과장된"],
+            answer: 2
+        },
+        {
+            number: "260",
+            question: "FUSTIAN의 반의어를 고르시오.",
+            options: ["hyperbole", "overestimation", "bald", "bombastic", "inflated"],
+            koreanQuestion: "FUSTIAN의 반의어를 고르시오.",
+            koreanOptions: ["과장", "과대평가", "평범한", "허풍스러운", "부푼"],
+            answer: 3
+        },
+        {
+            number: "261",
+            question: "CLOISTER의 반의어를 고르시오.",
+            options: ["socialite", "isolate", "eremite", "seclude", "segregate"],
+            koreanQuestion: "CLOISTER의 반의어를 고르시오.",
+            koreanOptions: ["사교계 명사", "고립시키다", "은둔자", "고립시키다", "분리하다"],
+            answer: 1
+        },
+        {
+            number: "262",
+            question: "AMELIORATE의 반의어를 고르시오.",
+            options: ["amend", "better", "enrich", "endamage", "refine"],
+            koreanQuestion: "AMELIORATE의 반의어를 고르시오.",
+            koreanOptions: ["수정하다", "개선하다", "풍요롭게 하다", "손해를 입히다", "정제하다"],
+            answer: 4
+        },
+        {
+            number: "263",
+            question: "MITIGATE의 반의어를 고르시오.",
+            options: ["assuage", "calm", "aggravate", "soothe", "allay"],
+            koreanQuestion: "MITIGATE의 반의어를 고르시오.",
+            koreanOptions: ["달래다", "진정시키다", "악화시키다", "달래다", "진정시키다"],
+            answer: 3
+        },
+        {
+            number: "264",
+            question: "PARTITION의 반의어를 고르시오.",
+            options: ["portion", "section", "composite", "part", "element"],
+            koreanQuestion: "PARTITION의 반의어를 고르시오.",
+            koreanOptions: ["부분", "부분", "전체", "부분", "요소"],
+            answer: 3
+        },
+        {
+            number: "265",
+            question: "SEVER의 반의어를 고르시오.",
+            options: ["incise", "fracture", "rupture", "decompose", "associate"],
+            koreanQuestion: "SEVER의 반의어를 고르시오.",
+            koreanOptions: ["절개하다", "파열시키다", "파열시키다", "분해하다", "연합하다"],
+            answer: 5
+        },
+        {
+            number: "266",
+            question: "SEGREGATE의 반의어를 고르시오.",
+            options: ["quarantine", "disengage", "unite", "seclude", "insulate"],
+            koreanQuestion: "SEGREGATE의 반의어를 고르시오.",
+            koreanOptions: ["격리하다", "분리하다", "통합하다", "고립시키다", "고립시키다"],
+            answer: 3
+        },
+        {
+            number: "267",
+            question: "CHASM의 반의어를 고르시오.",
+            options: ["cleft", "break", "whole", "fissure", "crack"],
+            koreanQuestion: "CHASM의 반의어를 고르시오.",
+            koreanOptions: ["갈라진 틈", "갈라진 틈", "전체", "균열", "균열"],
+            answer: 3
+        },
+        {
+            number: "268",
+            question: "PORTION의 반의어를 고르시오.",
+            options: ["totality", "ration", "partition", "segment", "commission"],
+            koreanQuestion: "PORTION의 반의어를 고르시오.",
+            koreanOptions: ["전체", "할당량", "분할", "부분", "위원회"],
+            answer: 1
+        },
+        {
+            number: "269",
+            question: "PALLIATE의 반의어를 고르시오.",
+            options: ["lighten", "softer", "injure", "temper", "heal"],
+            koreanQuestion: "PALLIATE의 반의어를 고르시오.",
+            koreanOptions: ["가볍게 하다", "부드럽게 하다", "해치다", "완화하다", "치유하다"],
+            answer: 3
+        },
+        {
+            number: "270",
+            question: "ALLAY의 반의어를 고르시오.",
+            options: ["remedy", "emend", "abate", "exacerbate", "moderate"],
+            koreanQuestion: "ALLAY의 반의어를 고르시오.",
+            koreanOptions: ["치료하다", "수정하다", "약화시키다", "악화시키다", "완화하다"],
+            answer: 4
+        },
+        {
+            number: "271",
+            question: "DETERIORATE의 반의어를 고르시오.",
+            options: ["atrophy", "crumble", "decay", "ebb", "enhance"],
+            koreanQuestion: "DETERIORATE의 반의어를 고르시오.",
+            koreanOptions: ["위축되다", "무너지다", "부패하다", "쇠퇴하다", "향상시키다"],
+            answer: 5
+        },
+        {
+            number: "272",
+            question: "WEAN의 반의어를 고르시오.",
+            options: ["Joined", "separate", "sequester", "isolate", "disintegrate"],
+            koreanQuestion: "WEAN의 반의어를 고르시오.",
+            koreanOptions: ["결합된", "분리하다", "격리시키다", "고립시키다", "분해되다"],
+            answer: 1
+        },
+        {
+            number: "273",
+            question: "LACERATE의 반의어를 고르시오.",
+            options: ["excise", "sunder", "unify", "cleave", "bisect"],
+            koreanQuestion: "LACERATE의 반의어를 고르시오.",
+            koreanOptions: ["잘라내다", "분리하다", "통합하다", "쪼개다", "이등분하다"],
+            answer: 3
+        },
+        {
+            number: "274",
+            question: "SEGMENT의 반의어를 고르시오.",
+            options: ["whole", "parcel", "component", "factor", "constituent"],
+            koreanQuestion: "SEGMENT의 반의어를 고르시오.",
+            koreanOptions: ["전체", "소포", "구성 요소", "요인", "구성 요소"],
+            answer: 1
+        },
+        {
+            number: "275",
+            question: "IMPROVE의 반의어를 고르시오.",
+            options: ["upgrade", "mar", "amend", "meliorate", "beef up"],
+            koreanQuestion: "IMPROVE의 반의어를 고르시오.",
+            koreanOptions: ["향상시키다", "망치다", "수정하다", "개선하다", "강화하다"],
+            answer: 2
+        },
+        {
+            number: "276",
+            question: "ABRASION의 반의어를 고르시오.",
+            options: ["tear", "rive", "incision", "discharge", "rip"],
+            koreanQuestion: "ABRASION의 반의어를 고르시오.",
+            koreanOptions: ["찢어짐", "찢다", "절개", "방출", "찢다"],
+            answer: 3
+        },
+        {
+            number: "277",
+            question: "MOLLIFY의 반의어를 고르시오.",
+            options: ["alleviate", "pacify", "palliate", "enrage", "gentle"],
+            koreanQuestion: "MOLLIFY의 반의어를 고르시오.",
+            koreanOptions: ["완화하다", "진정시키다", "완화하다", "격노하게 하다", "온화하게 하다"],
+            answer: 4
+        },
+        {
+            number: "278",
+            question: "PARCEL의 반의어를 고르시오.",
+            options: ["array", "mixture", "variety", "entity", "bunch"],
+            koreanQuestion: "PARCEL의 반의어를 고르시오.",
+            koreanOptions: ["배열", "혼합물", "다양성", "개체", "다발"],
+            answer: 4
+        },
+        {
+            number: "279",
+            question: "RIFT의 반의어를 고르시오.",
+            options: ["slit", "gap", "entire", "hiatus", "fissure"],
+            koreanQuestion: "RIFT의 반의어를 고르시오.",
+            koreanOptions: ["틈", "틈", "전체", "틈", "균열"],
+            answer: 3
+        },
+        {
+            number: "280",
+            question: "ANNEX의 반의어를 고르시오.",
+            options: ["merge", "meld", "consolidate", "integrate", "break down"],
+            koreanQuestion: "ANNEX의 반의어를 고르시오.",
+            koreanOptions: ["병합하다", "혼합하다", "통합하다", "통합하다", "분해하다"],
+            answer: 5
+        },
+        {
+            number: "281",
+            question: "TIMELY의 반의어를 고르시오.",
+            options: ["opportune", "unsuitable", "apropos", "convenient", "applicable"],
+            koreanQuestion: "TIMELY의 반의어를 고르시오.",
+            koreanOptions: ["시의적절한", "부적절한", "적절한", "편리한", "적용 가능한"],
+            answer: 2
+        },
+        {
+            number: "282",
+            question: "UPHOLD의 반의어를 고르시오.",
+            options: ["countenance", "espouse", "abandon", "advocate", "champion"],
+            koreanQuestion: "UPHOLD의 반의어를 고르시오.",
+            koreanOptions: ["지지하다", "지지하다", "포기하다", "지지하다", "지지하다"],
+            answer: 3
+        },
+        {
+            number: "283",
+            question: "SINISTER의 반의어를 고르시오.",
+            options: ["promising", "ominous", "untowrad", "ill-omened", "inauspicious"],
+            koreanQuestion: "SINISTER의 반의어를 고르시오.",
+            koreanOptions: ["유망한", "불길한", "불행한", "불길한", "불길한"],
+            answer: 1
+        },
+        {
+            number: "284",
+            question: "TRANSIENT의 반의어를 고르시오.",
+            options: ["ephemeral", "fugacious", "endless", "transitory", "temporary"],
+            koreanQuestion: "TRANSIENT의 반의어를 고르시오.",
+            koreanOptions: ["단명하는", "덧없는", "영원한", "일시적인", "일시적인"],
+            answer: 3
+        },
+        {
+            number: "285",
+            question: "EUPHORIA의 반의어를 고르시오.",
+            options: ["bliss", "beatitude", "ecstasy", "trance", "doldrums"],
+            koreanQuestion: "EUPHORIA의 반의어를 고르시오.",
+            koreanOptions: ["행복", "지복", "황홀경", "무아지경", "침체기"],
+            answer: 5
+        },
+        {
+            number: "286",
+            question: "FITFUL의 반의어를 고르시오.",
+            options: ["casual", "incidental", "spasmodic", "systematic", "sporadic"],
+            koreanQuestion: "FITFUL의 반의어를 고르시오.",
+            koreanOptions: ["우연한", "부수적인", "발작적인", "체계적인", "산발적인"],
+            answer: 4
+        },
+        {
+            number: "287",
+            question: "ELYSIUM의 반의어를 고르시오.",
+            options: ["mirth", "felicity", "heaven", "inferno", "nirvana"],
+            koreanQuestion: "ELYSIUM의 반의어를 고르시오.",
+            koreanOptions: ["환희", "행복", "천국", "지옥", "열반"],
+            answer: 4
+        },
+        {
+            number: "288",
+            question: "INEXTERMINABLE의 반의어를 고르시오.",
+            options: ["incorrigible", "indelible", "reversible", "ineradicable", "recidivism"],
+            koreanQuestion: "INEXTERMINABLE의 반의어를 고르시오.",
+            koreanOptions: ["교정 불가능한", "지울 수 없는", "되돌릴 수 있는", "없앨 수 없는", "재범"],
+            answer: 3
+        },
+        {
+            number: "289",
+            question: "FLEETING의 반의어를 고르시오.",
+            options: ["immortal", "evanescent", "fugitive", "passing", "short-lived"],
+            koreanQuestion: "FLEETING의 반의어를 고르시오.",
+            koreanOptions: ["불멸의", "덧없는", "도피하는", "지나가는", "단명하는"],
+            answer: 1
+        },
+        {
+            number: "290",
+            question: "RENOUNCE의 반의어를 고르시오.",
+            options: ["relinquish", "repudiate", "abnegate", "disclaim", "assume"],
+            koreanQuestion: "RENOUNCE의 반의어를 고르시오.",
+            koreanOptions: ["포기하다", "거부하다", "포기하다", "부인하다", "가정하다"],
+            answer: 5
+        },
+        {
+            number: "291",
+            question: "ABOLISH의 반의어를 고르시오.",
+            options: ["establish", "nullity", "revoke", "rescind", "abrogate"],
+            koreanQuestion: "ABOLISH의 반의어를 고르시오.",
+            koreanOptions: ["설립하다", "무효", "취소하다", "폐지하다", "폐지하다"],
+            answer: 1
+        },
+        {
+            number: "292",
+            question: "ETERNAL의 반의어를 고르시오.",
+            options: ["unremitting", "secular", "provisional", "constant", "incessant"],
+            koreanQuestion: "ETERNAL의 반의어를 고르시오.",
+            koreanOptions: ["끊임없는", "세속적인", "일시적인", "일정한", "끊임없는"],
+            answer: 3
+        },
+        {
+            number: "293",
+            question: "INCONVENIENT의 반의어를 고르시오.",
+            options: ["untimely", "inopportune", "malapropos", "bothersome", "convenient"],
+            koreanQuestion: "INCONVENIENT의 반의어를 고르시오.",
+            koreanOptions: ["때아닌", "부적절한", "부적절한", "귀찮은", "편리한"],
+            answer: 5
+        },
+        {
+            number: "294",
+            question: "FORTUNE의 반의어를 고르시오.",
+            options: ["blessing", "luck", "hap", "misadventure", "boon"],
+            koreanQuestion: "FORTUNE의 반의어를 고르시오.",
+            koreanOptions: ["축복", "행운", "우연", "불운", "은혜"],
+            answer: 4
+        },
+        {
+            number: "295",
+            question: "PROFITIOUS의 반의어를 고르시오.",
+            options: ["auspicious", "favorable", "toward", "depressing", "rose-colored"],
+            koreanQuestion: "PROFITIOUS의 반의어를 고르시오.",
+            koreanOptions: ["길조의", "유리한", "~쪽으로", "우울한", "낙관적인"],
+            answer: 4
+        },
+        {
+            number: "296",
+            question: "ENDURING의 반의어를 고르시오.",
+            options: ["outmoded", "permanent", "perpetual", "perennial", "lasting"],
+            koreanQuestion: "ENDURING의 반의어를 고르시오.",
+            koreanOptions: ["구식의", "영구적인", "영원한", "영원한", "지속적인"],
+            answer: 1
+        },
+        {
+            number: "297",
+            question: "SERENDIPITY의 반의어를 고르시오.",
+            options: ["mishap", "jackpot", "windfall", "godsend", "fluke"],
+            koreanQuestion: "SERENDIPITY의 반의어를 고르시오.",
+            koreanOptions: ["불행", "대성공", "뜻밖의 횡재", "뜻밖의 선물", "요행"],
+            answer: 1
+        },
+        {
+            number: "298",
+            question: "WRETCHEDNESS의 반의어를 고르시오.",
+            options: ["misery", "ecstatic", "abjection", "woe", "cast down"],
+            koreanQuestion: "WRETCHEDNESS의 반의어를 고르시오.",
+            koreanOptions: ["비참함", "황홀한", "비참함", "고통", "낙담한"],
+            answer: 2
+        },
+        {
+            number: "299",
+            question: "MISFORTUNE의 반의어를 고르시오.",
+            options: ["windfall", "mishap", "haplessness", "mischance", "misadventure"],
+            koreanQuestion: "MISFORTUNE의 반의어를 고르시오.",
+            koreanOptions: ["뜻밖의 횡재", "불행", "불행", "불운", "불운"],
+            answer: 1
+        },
+        {
+            number: "300",
+            question: "CALAMITY의 반의어를 고르시오.",
+            options: ["mishap", "disaster", "manna", "catastrophe", "fiasco"],
+            koreanQuestion: "CALAMITY의 반의어를 고르시오.",
+            koreanOptions: ["불행", "재앙", "뜻밖의 횡재", "대참사", "큰 실패"],
+            answer: 3
+        },
+        {
+            number: "301",
+            question: "INDOCTRINATE의 반의어를 고르시오.",
+            options: ["inspire", "infuse", "eject", "insert", "infiltrate"],
+            koreanQuestion: "INDOCTRINATE의 반의어를 고르시오.",
+            koreanOptions: ["영감을 주다", "불어넣다", "쫓아내다", "삽입하다", "침투하다"],
+            answer: 3
+        },
+        {
+            number: "302",
+            question: "HAVEN의 반의어를 고르시오.",
+            options: ["asylum", "peril", "sanctum", "sanctuary", "harbor"],
+            koreanQuestion: "HAVEN의 반의어를 고르시오.",
+            koreanOptions: ["피난처", "위험", "성소", "성역", "항구"],
+            answer: 2
+        },
+        {
+            number: "303",
+            question: "DISPASSIONATE의 반의어를 고르시오.",
+            options: ["disinterested", "deceptive", "unbiased", "fair", "just"],
+            koreanQuestion: "DISPASSIONATE의 반의어를 고르시오.",
+            koreanOptions: ["공정한", "기만적인", "공정한", "공정한", "공정한"],
+            answer: 2
+        },
+        {
+            number: "304",
+            question: "INCURSION의 반의어를 고르시오.",
+            options: ["assault", "pillage", "invade", "protection", "plunder"],
+            koreanQuestion: "INCURSION의 반의어를 고르시오.",
+            koreanOptions: ["공격", "약탈", "침입하다", "보호", "약탈"],
+            answer: 4
+        },
+        {
+            number: "305",
+            question: "EXCRETE의 반의어를 고르시오.",
+            options: ["emit", "exude", "secrete", "emanate", "absorb"],
+            koreanQuestion: "EXCRETE의 반의어를 고르시오.",
+            koreanOptions: ["방출하다", "스며 나오다", "분비하다", "발산하다", "흡수하다"],
+            answer: 5
+        },
+        {
+            number: "306",
+            question: "GUST의 반의어를 고르시오.",
+            options: ["predisposition", "distaste", "bent", "proclivity", "inclination"],
+            koreanQuestion: "GUST의 반의어를 고르시오.",
+            koreanOptions: ["성향", "혐오", "성향", "성향", "성향"],
+            answer: 2
+        },
+        {
+            number: "307",
+            question: "NONPOROUS의 반의어를 고르시오.",
+            options: ["passable", "impermeable", "impenetrable", "impervious", "impassible"],
+            koreanQuestion: "NONPOROUS의 반의어를 고르시오.",
+            koreanOptions: ["통과할 수 있는", "불침투성의", "관통할 수 없는", "불침투성의", "무감각한"],
+            answer: 1
+        },
+        {
+            number: "308",
+            question: "BIASED의 반의어를 고르시오.",
+            options: ["partisan", "inequitable", "prejudiced", "partial", "hardheaded"],
+            koreanQuestion: "BIASED의 반의어를 고르시오.",
+            koreanOptions: ["당파적인", "불공평한", "편견을 가진", "편파적인", "완고한"],
+            answer: 5
+        },
+        {
+            number: "309",
+            question: "PERVIOUS의 반의어를 고르시오.",
+            options: ["permeable", "osmotic", "porous", "close", "penetrable"],
+            koreanQuestion: "PERVIOUS의 반의어를 고르시오.",
+            koreanOptions: ["침투성 있는", "삼투성 있는", "다공성의", "닫힌", "관통할 수 있는"],
+            answer: 4
+        },
+        {
+            number: "310",
+            question: "ENGULF의 반의어를 고르시오.",
+            options: ["drown", "flood", "drain", "inundate", "deluge"],
+            koreanQuestion: "ENGULF의 반의어를 고르시오.",
+            koreanOptions: ["익사시키다", "범람시키다", "배수하다", "범람시키다", "대홍수"],
+            answer: 3
+        },
+        {
+            number: "311",
+            question: "TENABLE의 반의어를 고르시오.",
+            options: ["invincible", "invulnerable", "assailable", "impregnable", "indomitable"],
+            koreanQuestion: "TENABLE의 반의어를 고르시오.",
+            koreanOptions: ["무적의", "무적의", "공격 가능한", "난공불락의", "불굴의"],
+            answer: 3
+        },
+        {
+            number: "312",
+            question: "SPEW의 반의어를 고르시오.",
+            options: ["radiate", "beam", "eject", "ray", "blacken"],
+            koreanQuestion: "SPEW의 반의어를 고르시오.",
+            koreanOptions: ["방출하다", "광선을 내다", "내뿜다", "광선", "검게 하다"],
+            answer: 5
+        },
+        {
+            number: "313",
+            question: "ALOOF의 반의어를 고르시오.",
+            options: ["sociable", "indifferent", "apathetic", "unconcerned", "dispassionate"],
+            koreanQuestion: "ALOOF의 반의어를 고르시오.",
+            koreanOptions: ["사교적인", "무관심한", "냉담한", "무관심한", "공정한"],
+            answer: 1
+        },
+        {
+            number: "314",
+            question: "INSTILL의 반의어를 고르시오.",
+            options: ["inculcate", "imbue", "eradicate", "ingrain", "implant"],
+            koreanQuestion: "INSTILL의 반의어를 고르시오.",
+            koreanOptions: ["주입하다", "가득 채우다", "근절하다", "뿌리내리게 하다", "심다"],
+            answer: 3
+        },
+        {
+            number: "315",
+            question: "JAUNDICED의 반의어를 고르시오.",
+            options: ["unjust", "prejudiced", "one-sided", "open-minded", "interested"],
+            koreanQuestion: "JAUNDICED의 반의어를 고르시오.",
+            koreanOptions: ["부당한", "편견을 가진", "편파적인", "개방적인", "관심 있는"],
+            answer: 4
+        },
+        {
+            number: "316",
+            question: "DETACHED의 반의어를 고르시오.",
+            options: ["impartial", "equitable", "communicative", "unprejudiced", "incurious"],
+            koreanQuestion: "DETACHED의 반의어를 고르시오.",
+            koreanOptions: ["공정한", "공평한", "의사소통이 잘 되는", "편견 없는", "호기심 없는"],
+            answer: 3
+        },
+        {
+            number: "317",
+            question: "TENDENTIOUS의 반의어를 고르시오.",
+            options: ["partial", "bias", "unfair", "indifferent", "partisan"],
+            koreanQuestion: "TENDENTIOUS의 반의어를 고르시오.",
+            koreanOptions: ["편파적인", "편견", "불공평한", "무관심한", "당파적인"],
+            answer: 4
+        },
+        {
+            number: "318",
+            question: "CLIQUEY의 반의어를 고르시오.",
+            options: ["factional", "cliquish", "factious", "clannish", "receptive"],
+            koreanQuestion: "CLIQUEY의 반의어를 고르시오.",
+            koreanOptions: ["당파적인", "파벌적인", "당파적인", "배타적인", "수용적인"],
+            answer: 5
+        },
+        {
+            number: "319",
+            question: "STRIKE의 반의어를 고르시오.",
+            options: ["guard", "raid", "assail", "charge", "assault"],
+            koreanQuestion: "STRIKE의 반의어를 고르시오.",
+            koreanOptions: ["방어하다", "급습하다", "공격하다", "돌격하다", "공격"],
+            answer: 1
+        },
+        {
+            number: "320",
+            question: "AIRTIGHT의 반의어를 고르시오.",
+            options: ["nonporous", "hermetic", "watertight", "impermeable", "porous"],
+            koreanQuestion: "AIRTIGHT의 반의어를 고르시오.",
+            koreanOptions: ["비다공성", "밀폐된", "방수", "불침투성의", "다공성의"],
+            answer: 5
+        },
+        {
+            number: "321",
+            question: "ACME의 반의어를 고르시오.",
+            options: ["ridge", "apex", "crest", "culmination", "abyss"],
+            koreanQuestion: "ACME의 반의어를 고르시오.",
+            koreanOptions: ["능선", "정점", "정상", "최고점", "심연"],
+            answer: 5
+        },
+        {
+            number: "322",
+            question: "PREAMBLE의 반의어를 고르시오.",
+            options: ["exordium", "prologue", "prelude", "conclusion", "overture"],
+            koreanQuestion: "PREAMBLE의 반의어를 고르시오.",
+            koreanOptions: ["서문", "서문", "서곡", "결론", "서곡"],
+            answer: 4
+        },
+        {
+            number: "323",
+            question: "APT의 반의어를 고르시오.",
+            options: ["gawky", "deft", "adroit", "dexterous", "ambidextrous"],
+            koreanQuestion: "APT의 반의어를 고르시오.",
+            koreanOptions: ["어색한", "능숙한", "능숙한", "능숙한", "양손잡이의"],
+            answer: 1
+        },
+        {
+            number: "324",
+            question: "CONVERSANT의 반의어를 고르시오.",
+            options: ["familiar", "adept", "untrained", "proficient", "versed"],
+            koreanQuestion: "CONVERSANT의 반의어를 고르시오.",
+            koreanOptions: ["친숙한", "능숙한", "훈련되지 않은", "능숙한", "정통한"],
+            answer: 3
+        },
+        {
+            number: "325",
+            question: "FURROW의 반의어를 고르시오.",
+            options: ["nadir", "climax", "trough", "abyss", "pit"],
+            koreanQuestion: "FURROW의 반의어를 고르시오.",
+            koreanOptions: ["최하점", "절정", "골짜기", "심연", "구덩이"],
+            answer: 2
+        },
+        {
+            number: "326",
+            question: "VIRTUOSO의 반의어를 고르시오.",
+            options: ["maestro", "amateur", "diplomate", "expert", "adept"],
+            koreanQuestion: "VIRTUOSO의 반의어를 고르시오.",
+            koreanOptions: ["거장", "아마추어", "외교관", "전문가", "능숙한"],
+            answer: 2
+        },
+        {
+            number: "327",
+            question: "UPSHOT의 반의어를 고르시오.",
+            options: ["coda", "finale", "epilogue", "peroration", "preface"],
+            koreanQuestion: "UPSHOT의 반의어를 고르시오.",
+            koreanOptions: ["종결부", "피날레", "에필로그", "결론", "서문"],
+            answer: 5
+        },
+        {
+            number: "328",
+            question: "DECIMATE의 반의어를 고르시오.",
+            options: ["sterilize", "carnage", "extirpate", "eradicate", "resurrect"],
+            koreanQuestion: "DECIMATE의 반의어를 고르시오.",
+            koreanOptions: ["살균하다", "대학살", "근절하다", "근절하다", "부활시키다"],
+            answer: 5
+        },
+        {
+            number: "329",
+            question: "NEOPHYTE의 반의어를 고르시오.",
+            options: ["master", "novice", "tyro", "recruit", "tiro"],
+            koreanQuestion: "NEOPHYTE의 반의어를 고르시오.",
+            koreanOptions: ["달인", "초보자", "초보자", "신병", "초보자"],
+            answer: 1
+        },
+        {
+            number: "330",
+            question: "COMMENCE의 반의어를 고르시오.",
+            options: ["threshold", "launch", "desist", "embark", "induct"],
+            koreanQuestion: "COMMENCE의 반의어를 고르시오.",
+            koreanOptions: ["문턱", "시작하다", "그만두다", "시작하다", "취임시키다"],
+            answer: 3
+        },
+        {
+            number: "331",
+            question: "INNATE의 반의어를 고르시오.",
+            options: ["heritable", "inborn", "congenital", "nonhereditary", "inherited"],
+            koreanQuestion: "INNATE의 반의어를 고르시오.",
+            koreanOptions: ["유전되는", "타고난", "선천적인", "비유전적인", "상속된"],
+            answer: 4
+        },
+        {
+            number: "332",
+            question: "RUDIMENTARY의 반의어를 고르시오.",
+            options: ["germinal", "complicated", "nascent", "embryonic", "inchoate"],
+            koreanQuestion: "RUDIMENTARY의 반의어를 고르시오.",
+            koreanOptions: ["초기의", "복잡한", "초기의", "초기의", "초기의"],
+            answer: 2
+        },
+        {
+            number: "333",
+            question: "MALADROIT의 반의어를 고르시오.",
+            options: ["inept", "awkward", "capable", "clumsy", "gawky"],
+            koreanQuestion: "MALADROIT의 반의어를 고르시오.",
+            koreanOptions: ["서투른", "어색한", "유능한", "어색한", "어색한"],
+            answer: 3
+        },
+        {
+            number: "334",
+            question: "PROCLIVITY의 반의어를 고르시오.",
+            options: ["penchant", "inclination", "predilection", "bent", "averseness"],
+            koreanQuestion: "PROCLIVITY의 반의어를 고르시오.",
+            koreanOptions: ["애호", "기울기", "성향", "성향", "혐오"],
+            answer: 5
+        },
+        {
+            number: "335",
+            question: "TABULA RASA의 반의어를 고르시오.",
+            options: ["blank slate", "experimental", "conjectural", "learned", "acquired"],
+            koreanQuestion: "TABULA RASA의 반의어를 고르시오.",
+            koreanOptions: ["백지 상태", "실험적인", "추측적인", "배운", "습득된"],
+            answer: 5
+        },
+        {
+            number: "336",
+            question: "MASSACRE의 반의어를 고르시오.",
+            options: ["resuscitate", "exterminate", "annihilate", "demolish", "holocaust"],
+            koreanQuestion: "MASSACRE의 반의어를 고르시오.",
+            koreanOptions: ["소생시키다", "전멸시키다", "전멸시키다", "파괴하다", "대참사"],
+            answer: 1
+        },
+        {
+            number: "337",
+            question: "ENVOY의 반의어를 고르시오.",
+            options: ["prologue", "explicit", "denouement", "outrance", "upshot"],
+            koreanQuestion: "ENVOY의 반의어를 고르시오.",
+            koreanOptions: ["서문", "명시적인", "대단원", "격렬함", "결과"],
+            answer: 3
+        },
+        {
+            number: "338",
+            question: "PINNACLE의 반의어를 고르시오.",
+            options: ["vertex", "stratosphere", "summit", "zenith", "bottom"],
+            koreanQuestion: "PINNACLE의 반의어를 고르시오.",
+            koreanOptions: ["정점", "성층권", "정점", "정점", "바닥"],
+            answer: 5
+        },
+        {
+            number: "339",
+            question: "COGNOSCENTE의 반의어를 고르시오.",
+            options: ["connoisseur", "artisan", "maven", "dabbler", "doyen"],
+            koreanQuestion: "COGNOSCENTE의 반의어를 고르시오.",
+            koreanOptions: ["감정가", "장인", "전문가", "아마추어", "대부"],
+            answer: 4
+        },
+        {
+            number: "340",
+            question: "TROTH의 반의어를 고르시오.",
+            options: ["fully-formed", "fully-blown", "disaffection", "fully-fledged", "steadfastness"],
+            koreanQuestion: "TROTH의 반의어를 고르시오.",
+            koreanOptions: ["완전히 형성된", "만개한", "불만", "완전히 성장한", "견고함"],
+            answer: 3
+        }
+    ];
+
+    const questionsPerPage = 10;
+    let currentQuizIndex = 0;
+    let userAnswers = {};
+
+    const quizContainer = document.getElementById('quiz-container');
+
+    let db;
+    const dbName = 'vocaQuizDB';
+    const storeName = 'quizState';
+    const version = 1;
+
+    const initDbAndLoadState = () => {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(dbName, version);
+            
+            request.onerror = event => {
+                console.error("IndexedDB error:", event.target.error);
+                reject("IndexedDB error occurred.");
+            };
+
+            request.onupgradeneeded = event => {
+                db = event.target.result;
+                if (!db.objectStoreNames.contains(storeName)) {
+                    db.createObjectStore(storeName, { keyPath: 'id' });
+                }
+            };
+
+            request.onsuccess = event => {
+                db = event.target.result;
+                loadState().then(resolve).catch(reject);
+            };
+        });
+    };
+
+    const loadState = () => {
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([storeName], 'readonly');
+            const objectStore = transaction.objectStore(storeName);
+            const request = objectStore.get(1);
+
+            request.onsuccess = event => {
+                const savedState = event.target.result;
+                if (savedState) {
+                    currentQuizIndex = savedState.quizIndex;
+                    userAnswers = savedState.answers;
+                } else {
+                    currentQuizIndex = 0;
+                    userAnswers = {};
+                }
+                resolve();
+            };
+            request.onerror = event => {
+                reject("Failed to load state from IndexedDB.");
+            };
+        });
+    };
+
+    const saveState = () => {
+        try {
+            const transaction = db.transaction([storeName], 'readwrite');
+            const objectStore = transaction.objectStore(storeName);
+            const state = {
+                id: 1,
+                quizIndex: currentQuizIndex,
+                answers: userAnswers
+            };
+            objectStore.put(state);
+        } catch (e) {
+            console.error('Failed to save state to IndexedDB:', e);
+        }
+    };
+    
+    const renderQuizPage = (startIndex, answers) => {
+        currentQuizIndex = startIndex;
+        userAnswers = answers;
+        
+        quizContainer.innerHTML = '';
+        const questionsToRender = quizData.slice(currentQuizIndex, currentQuizIndex + questionsPerPage);
+
+        if (questionsToRender.length === 0) {
+            quizContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-8 text-center text-gray-500">
+                    <p class="text-xl mb-4">모든 문제를 다 풀었습니다!</p>
+                    <p>수고하셨습니다.</p>
+                </div>
+            `;
+            return;
+        }
+
+        questionsToRender.forEach((question, localIndex) => {
+            const globalIndex = currentQuizIndex + localIndex;
+            const questionElement = document.createElement('div');
+            questionElement.className = 'mb-6';
+            const userAnswer = userAnswers[globalIndex];
+            questionElement.innerHTML = `
+                <div class="flex items-start mb-4">
+                    <span class="text-lg font-bold text-gray-800 mr-2">${question.number}.</span>
+                    <div class="question-box w-full">
+                        <p class="question-text text-base font-medium text-gray-700">${question.question.replace(/_{2,}/g, '____')}</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    ${question.options.map((option, optIndex) => `
+                        <button type="button" class="option-button w-full text-left p-3 border-2 rounded-lg bg-gray-50 border-gray-200 focus:outline-none ${userAnswers[globalIndex] === optIndex ? 'selected' : ''}"
+                            data-question-index="${globalIndex}"
+                            data-option-index="${optIndex}">
+                            (${String.fromCharCode(97 + optIndex)}) ${option}
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+            quizContainer.appendChild(questionElement);
+        });
+
+        const submitButton = document.createElement('button');
+        submitButton.id = 'submit-btn';
+        submitButton.className = 'mt-8 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-transform duration-200 transform hover:scale-105 focus:outline-none';
+        submitButton.textContent = '제출';
+        quizContainer.appendChild(submitButton);
+
+        const totalPages = Math.ceil(quizData.length / questionsPerPage);
+        const paginationContainer = document.createElement('div');
+        paginationContainer.className = 'pagination mt-6';
+        paginationContainer.innerHTML = `
+            <span class="text-lg font-bold">페이지: </span>
+            <input type="number" id="page-input" class="rounded-lg border-2 border-gray-300 p-1 text-sm focus:outline-none focus:border-blue-500" min="1" max="${totalPages}" value="${Math.floor(currentQuizIndex / questionsPerPage) + 1}">
+            <span class="text-lg font-bold"> / ${totalPages}</span>
+        `;
+        quizContainer.appendChild(paginationContainer);
+
+        attachEventListeners();
+
+        const answeredCount = Object.keys(userAnswers).filter(key => parseInt(key) >= currentQuizIndex && parseInt(key) < currentQuizIndex + questionsPerPage && userAnswers[key] !== undefined).length;
+        const totalQuestions = questionsToRender.length;
+        submitButton.disabled = answeredCount !== totalQuestions;
+    };
+
+    const attachEventListeners = () => {
+        const optionButtons = document.querySelectorAll('.option-button');
+        optionButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const questionIndex = parseInt(button.dataset.questionIndex);
+                const optionIndex = parseInt(button.dataset.optionIndex);
+                
+                const prevSelected = document.querySelectorAll(`button[data-question-index="${questionIndex}"].selected`);
+                prevSelected.forEach(btn => btn.classList.remove('selected', 'border-blue-500', 'bg-blue-100'));
+
+                button.classList.add('selected', 'border-blue-500', 'bg-blue-100');
+                userAnswers[questionIndex] = optionIndex;
+                
+                saveState();
+
+                const answeredCount = Object.keys(userAnswers).filter(key => parseInt(key) >= currentQuizIndex && parseInt(key) < currentQuizIndex + questionsPerPage && userAnswers[key] !== undefined).length;
+                const totalQuestions = quizData.slice(currentQuizIndex, currentQuizIndex + questionsPerPage).length;
+                document.getElementById('submit-btn').disabled = answeredCount !== totalQuestions;
+            });
+        });
+
+        document.getElementById('submit-btn').addEventListener('click', showResults);
+        
+        const pageInput = document.getElementById('page-input');
+        pageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const pageNumber = parseInt(e.target.value);
+                const totalPages = Math.ceil(quizData.length / questionsPerPage);
+                if (pageNumber >= 1 && pageNumber <= totalPages) {
+                    currentQuizIndex = (pageNumber - 1) * questionsPerPage;
+                    saveState();
+                    renderQuizPage(currentQuizIndex, userAnswers);
+                } else {
+                    e.target.value = Math.floor(currentQuizIndex / questionsPerPage) + 1; // 유효하지 않은 값 입력 시 현재 페이지로 되돌리기
+                }
+            }
+        });
+    };
+
+    const showResults = () => {
+        quizContainer.innerHTML = '';
+        
+        const resultsSection = document.createElement('div');
+        resultsSection.className = 'results-section';
+        
+        const resultsTitle = document.createElement('h2');
+        resultsTitle.className = 'text-2xl font-bold text-center mb-6 text-gray-800';
+        resultsTitle.textContent = '결과';
+        resultsSection.appendChild(resultsTitle);
+
+        let correctCount = 0;
+        const questionsAnswered = quizData.slice(currentQuizIndex, currentQuizIndex + questionsPerPage);
+
+        questionsAnswered.forEach((question, localIndex) => {
+            const globalIndex = currentQuizIndex + localIndex;
+            const userAnswer = userAnswers[globalIndex];
+            const isCorrect = (userAnswer + 1) === question.answer;
+
+            if (isCorrect) {
+                correctCount++;
+            }
+
+            const resultElement = document.createElement('div');
+            resultElement.className = 'mb-6 p-4 rounded-lg ' + (isCorrect ? 'bg-green-50' : 'bg-red-50');
+            resultElement.innerHTML = `
+                <div class="flex items-start mb-2">
+                    <span class="text-lg font-bold text-gray-800 mr-2">${question.number}.</span>
+                    <div class="w-full">
+                        <p class="question-text font-medium text-gray-700 mb-2">${question.question.replace(/_{2,}/g, '____')}</p>
+                        <p class="text-sm text-gray-600">${question.koreanQuestion}</p>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <p class="text-base font-semibold text-gray-700 mb-2">정답: <span class="${isCorrect ? 'text-green-600' : 'text-red-600'}">(${String.fromCharCode(97 + question.answer - 1)}) ${question.options[question.answer - 1]}</span></p>
+                    <div class="text-sm text-gray-600 space-y-1">
+                        ${question.options.map((option, optIndex) => `
+                            <p>(${String.fromCharCode(97 + optIndex)}) ${option} - ${question.koreanOptions[optIndex]}</p>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            resultsSection.appendChild(resultElement);
+        });
+
+        const scoreElement = document.createElement('div');
+        scoreElement.className = 'text-2xl font-bold text-center mt-8 ' + (correctCount === questionsPerPage ? 'text-green-600' : 'text-blue-500');
+        scoreElement.textContent = `당신의 점수: ${correctCount}/${questionsPerPage}점`;
+        resultsSection.appendChild(scoreElement);
+        
+        if (currentQuizIndex + questionsPerPage < quizData.length) {
+            const nextButton = document.createElement('button');
+            nextButton.className = 'mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-transform duration-200 transform hover:scale-105 focus:outline-none';
+            nextButton.textContent = '다음 10문제 풀기';
+            nextButton.addEventListener('click', () => {
+                currentQuizIndex += questionsPerPage;
+                saveState();
+                renderQuizPage(currentQuizIndex, userAnswers);
+            });
+            resultsSection.appendChild(nextButton);
+        } else {
+            const finishMessage = document.createElement('p');
+            finishMessage.className = 'mt-4 text-center text-lg font-semibold text-gray-600';
+            finishMessage.textContent = '모든 문제를 다 풀었습니다. 수고하셨습니다!';
+            resultsSection.appendChild(finishMessage);
+        }
+
+        quizContainer.appendChild(resultsSection);
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            quizContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-8 text-center text-gray-500">
+                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-dashed border-blue-500 mb-4"></div>
+                    <p>데이터 불러오는 중...</p>
+                </div>
+            `;
+            await initDbAndLoadState();
+            renderQuizPage(currentQuizIndex, userAnswers);
+        } catch (e) {
+            quizContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-8 text-center text-red-500">
+                    <p class="text-xl mb-4">데이터 로딩에 실패했습니다.</p>
+                    <p>오류: ${e}</p>
+                </div>
+            `;
+        }
+    });
+
+</script>
+
+</body>
+</html>
