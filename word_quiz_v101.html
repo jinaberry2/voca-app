@@ -1,0 +1,1985 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V101 TEST Voca Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f0f4f8;
+            color: #334155;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+        }
+        .quiz-card {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+        }
+        .question-box {
+            background-color: #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .question-text {
+            white-space: pre-wrap;
+        }
+        .option-button {
+            transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+        }
+        .option-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .option-button.selected {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .option-button.correct {
+            background-color: #d1fae5;
+            border-color: #10b981;
+        }
+        .option-button.incorrect {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+        .results-section {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .answer-box {
+            background-color: #f0f4f8;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .pagination input {
+            width: 4rem;
+            text-align: center;
+        }
+
+        /* Responsive design for small screens */
+        @media (max-width: 640px) {
+            body {
+                padding: 0.5rem;
+            }
+            .quiz-card {
+                padding: 1.5rem;
+            }
+            .question-text {
+                font-size: 0.95rem;
+            }
+            .option-button {
+                font-size: 0.9rem;
+                padding: 0.75rem;
+            }
+            .results-section {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app" class="container">
+    <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">V101 Voca Quiz</h1>
+    <div id="quiz-container" class="quiz-card">
+        <!-- 퀴즈 콘텐츠가 여기에 렌더링됩니다 -->
+    </div>
+</div>
+
+<script>
+    // PDF에서 추출한 퀴즈 데이터
+    const quizData = [
+        {
+            number: "001",
+            question: "No decent one, again if he or she were a decent person, could deny that all the committee activities and abuses of human rights, per se, are ____",
+            options: ["abhorrent", "boiler plate", "abiding", "capricious", "dazzling"],
+            koreanQuestion: "교양 있는 사람이라면, 다시 말해, 교양 있는 사람이라면, 그 누구라도, 모든 인권 침해들은, 그 자체로, 혐오감을 자아낸다는 점을 부인할 수 없을 것이다.",
+            koreanOptions: ["혐오하는", "진부한 표현", "지속적인", "변덕스러운", "눈 부시는"],
+            answer: 1 
+        },
+        {
+            number: "002",
+            question: "No wonder that the compliant members of the expedition agreed to set and ____ rules.",
+            options: ["abominate", "abide by", "backlash", "clamp down on", "crack down on"],
+            koreanQuestion: "그 고분고분한 탐험대 구성원들이 규칙을 정해놓고 이에 따르는데 동의한 것은 당연한 일이었다.",
+            koreanOptions: ["혐오하다", "준수하다", "반대하다", "단속하다", "단속하다"],
+            answer: 2
+        },
+        {
+            number: "003",
+            question: "There is growing recognition that we should ____ segregation to make society harmonious.",
+            options: ["abolish", "capitalize", "boast", "delve into", "acquiesce"],
+            koreanQuestion: "사회를 조화롭게 하기 위해 인종 차별을 폐지해야 한다는 인식이 점점 더해가고 있다.",
+            koreanOptions: ["폐지하다", "이용하다", "자랑하다", "탐구하다", "묵인하다"],
+            answer: 1
+        },
+        {
+            number: "004",
+            question: "The ____ from alcohol is essential while you are taking this medication lest it should cause any adverse effects.",
+            options: ["aide", "bailout", "calumny", "abstention", "deposition"],
+            koreanQuestion: "이 약을 복용하는 동안에는, 부작용 방지를 위해, 반드시 음주를 삼가야 한다.",
+            koreanOptions: ["측근", "구제금융", "비방", "절제", "파면"],
+            answer: 4
+        },
+        {
+            number: "005",
+            question: "Her dress was tightly belted, ____ her slim waist even more.",
+            options: ["begetting", "chagrining", "aggravating", "debilitating", "accentuating"],
+            koreanQuestion: "그녀는 옷에 띠를 꼭 매고 있었는데 그것이 그녀의 가는 허리를 더욱 강조해 주었다.",
+            koreanOptions: ["유발하다", "분노하게하다", "악화시키다", "쇠약하게하다", "강조하다"],
+            answer: 5
+        },
+        {
+            number: "006",
+            question: "What the rival parties can do best now is to ____ the committee activities and start anew.",
+            options: ["wreck", "wrap up", "wring", "underline", "underscore"],
+            koreanQuestion: "야당이 지금 할 수 있는 최선은 특위활동을 종결짓고 새롭게 출발하는 것이다.",
+            koreanOptions: ["파괴하다", "마무리 짓다", "억지로 빼앗다, 착취하다", "강조하다", "강조하다"],
+            answer: 2
+        },
+        {
+            number: "007",
+            question: "The two brothers had such a long ____ over the use of the bicycle that their mother finally wouldn't allow either of them to use it in a bid to stem the cause of the argument.",
+            options: ["zest", "wrangle", "windfall", "tranquil", "tailspin"],
+            koreanQuestion: "그 두 형제가 자전거를 타는 문제로 너무 오래 말다툼을 했기 때문에. 그들의 어머니는 그 논쟁의 원인을 차단하기 위해, 누구에게도 자전거를 타도록 허락하지 않으려고 했다.",
+            koreanOptions: ["풍미, 열정", "언쟁", "뜻밖의 횡재", "평온한", "의기소침"],
+            answer: 2
+        },
+        {
+            number: "008",
+            question: "Private schools and the opposition parties are aggressively seeking to ____ a bill designed to promote school reform for it can cause a lot of trouble for them.",
+            options: ["vindicate", "brag", "vouch", "tantalize", "thwart"],
+            koreanQuestion: "사립학교와 정당은, 개혁을 위해 고안된 법안이 그들에게 많은 혼란을 초래할 수 있기 때문에, 강경한 반대 입장을 보이며 법안을 무효화 할 방안을 모색하고 있다.",
+            koreanOptions: ["정당함을 입증하다", "원상태로 되돌리다", "보증하다", "애타게 하다", "좌절시키다, 방해하다"],
+            answer: 5
+        },
+        {
+            number: "009",
+            question: "The suspect was eventually caught through ____ investigation by the unstoppable and eager detectives.",
+            options: ["unbiased", "tenacious", "unilateral", "vaunted", "watertight"],
+            koreanQuestion: "불굴의 열정적인 형사들의 끈질긴 수사 끝에 마침내 용의자가 잡혔다",
+            koreanOptions: ["편견이 없는", "완고한", "일방적인", "자랑거리인", "빈틈없는"],
+            answer: 2
+        },
+        {
+            number: "010",
+            question: "The president went on to thank John Snow for his service, noting economic outcomes made during his ____.",
+            options: ["tenure", "wreck", "wrangle", "unrest", "upheaval"],
+            koreanQuestion: "그는 스노우 전임 장관이 재임 중에 이룩한 경제적 성과를 지적하면서 그의 노고에 감사를 표했습니다.",
+            koreanOptions: ["임기", "난파", "언쟁", "소동", "대변동"],
+            answer: 1
+        },
+        {
+            number: "011",
+            question: "Relations between the two countries were ____ because of territorial conflicts that incurred escalating tensions between them.",
+            options: ["advocated", "appropriated", "deteriorated", "beseeched", "commuted"],
+            koreanQuestion: "양국 사이에 긴장 고조를 초래한 영토분쟁으로 인해 양국의 관계가 악화되었다.",
+            koreanOptions: ["옹호하다", "착복하다", "악화시키다", "간청하다", "통근하다"],
+            answer: 3
+        },
+        {
+            number: "012",
+            question: "He has a lot of ____ and equivocal ideas about what to do, but no concrete and clear plans.",
+            options: ["awry", "ambiguous", "brisk", "circumspect", "byzantine"],
+            koreanQuestion: "그는 무엇을 해야 할 것인가에 대한 모호하고 분명치 않은 아이디어만 있을 뿐 구체적이고 분명한 계획은 없다.",
+            koreanOptions: ["뒤틀린", "모호한", "활기찬", "조심성 있는", "복잡한"],
+            answer: 2
+        },
+        {
+            number: "013",
+            question: "The government ____ the lives of the poor by giving them food.",
+            options: ["appraised", "buttressed", "concocted", "ameliorated", "decommission"],
+            koreanQuestion: "정부는 식량을 제공하여 빈민들의 생활고를 개선시켰다.",
+            koreanOptions: ["값을 매기다", "지지하다", "날조하다", "개선시키다", "직권을 해체하다"],
+            answer: 4
+        },
+        {
+            number: "014",
+            question: "The accident victim has ____ and so she can't remember her name.",
+            options: ["baron", "archrival", "amnesia", "capital punishment", "dictum"],
+            koreanQuestion: "그 사고 피해자는 기억상실증에 걸려 자신의 이름을 기억할 수 없다.",
+            koreanOptions: ["대 사업가", "숙적", "기억상실증", "사형", "격언"],
+            answer: 3
+        },
+        {
+            number: "015",
+            question: "____ is characterized by a significant weight loss resulting from excessive dieting.",
+            options: ["debris", "coterie", "boloney", "autopsy", "anorexia"],
+            koreanQuestion: "거식증은 과도한 식이요법으로 인한 상당한 무게 감소로 특징지어 진다.",
+            koreanOptions: ["파편", "한패", "헛소리", "부검", "거식증"],
+            answer: 5
+        },
+        {
+            number: "016",
+            question: "The company is proud to be in the ____ of scientific progress.",
+            options: ["underling", "tumor", "vanguard", "truce", "toll"],
+            koreanQuestion: "우리 회사는 과학 발전의 선봉에 서 있는 것을 자랑스러워한다.",
+            koreanOptions: ["아랫사람", "종양", "선봉", "휴전", "사용세, 사상자수"],
+            answer: 3
+        },
+        {
+            number: "017",
+            question: "They are accused of being involved in ____ practices.",
+            options: ["blunt", "venal", "unassuming", "veracious", "unilateral"],
+            koreanQuestion: "그들은 뇌물을 받고 매수되는 관행에 연루된 혐의로 기소된 상태이다.",
+            koreanOptions: ["무딘", "돈에 매수하기 쉬운", "겸손한", "진실한", "일방적인"],
+            answer: 2
+        },
+        {
+            number: "018",
+            question: "Employers also say they dislike ____ letters, like a three-page letter talking about the applicant's philosophy of education.",
+            options: ["verbose", "upcoming", "unyielding", "virile", "wily"],
+            koreanQuestion: "고용주들은 세 페이지짜리 지원자 교육 철학에 대한 것과 같은 장황한 편지를 싫어한다고 말한다.",
+            koreanOptions: ["말이 많은", "다가오는", "완고한", "남성다운", "교활한"],
+            answer: 1
+        },
+        {
+            number: "019",
+            question: "There's a certain ____ pleasure in reading books about travel.",
+            options: ["wary", "vicarious", "untapped", "vituperative", "wrenching"],
+            koreanQuestion: "여행에 관한 책을 읽으면 어떤 대리적 즐거움을 맛보게 된다.",
+            koreanOptions: ["경계하는", "(감정 등이) 대리의", "미개발의", "욕하는", "정신적으로 괴로운"],
+            answer: 2
+        },
+        {
+            number: "020",
+            question: "No parent can ever be ____ enough to prevent a small child from taking many a painful tumble.",
+            options: ["warlike", "mortal", "vehement", "vigilant", "vindictive"],
+            koreanQuestion: "작은 어린이가 여러 번 고통스럽게 넘어지는 것을 막을 수 있을 만큼 충분한 경계를 하는 부모는 없다.",
+            koreanOptions: ["호전적인", "치명적", "열광적인", "경계를 게을리 하지 않는", "원한을 품은"],
+            answer: 4
+        },
+        {
+            number: "021",
+            question: "Notwithstanding all the temptations inflicted on him, the philosopher didn't jump on the ____ and remained firm in his own convictions.",
+            options: ["epicenter", "backfire", "bandwagon", "catapult", "dementia"],
+            koreanQuestion: "자신에게 가해진 많은 유혹들에게 불구하고 그 철학자는 성급하게 시류 에 영합하지 않고, 자신의 소신을 지켰다",
+            koreanOptions: ["진원지", "역효과가 나다", "유행", "투석기", "정신질환"],
+            answer: 3
+        },
+        {
+            number: "022",
+            question: "She is so beautiful that she ____ every man she meets at the first sight.",
+            options: ["afflict", "beguile", "censure", "denounce", "nibble"],
+            koreanQuestion: "그 여자는 너무 아름다워서 만나는 모든 남자들을 바로 첫눈에 매혹시켜 버린다.",
+            koreanOptions: ["괴롭히다", "속이다", "검열하다", "비난하다", "조금씩 갉아 먹다"],
+            answer: 2
+        },
+        {
+            number: "023",
+            question: "The China has menaced the island of Taiwan with missile tests and ____ threats of invasion, citing a possibility of entire destruction of the small territory.",
+            options: ["befitting", "despicable", "cardinal", "bellicose", "enigmatic"],
+            koreanQuestion: "중국은, 조그마한 지역인 대만의 전멸의 가능성을 예로 들며, 미사일 테스트와 호전적인 침공위협을 통해 섬나라 대만을 위협했다.",
+            koreanOptions: ["잘 맞는", "비열한", "주요한", "호전적인", "수수께끼의"],
+            answer: 4
+        },
+        {
+            number: "024",
+            question: "She began to ____ the police for paying little attention to the theft from her car and criticized its negligence in a public way.",
+            options: ["beget", "champion", "berate", "decoy", "elate"],
+            koreanQuestion: "그녀는 자신의 차에서 일어난 도난 사건에 대해 경찰을 비난하기 시작했고, 이러한 태만을 공개적으로 비판했다.",
+            koreanOptions: ["유발하다", "옹호하다", "비난하다", "유인하다", "고무하다"],
+            answer: 3
+        },
+        {
+            number: "025",
+            question: "There are always good people who will retain a fair approach to the issues and try not to give in to ____.",
+            options: ["big name", "deign", "elixir", "fanatic", "bigotry"],
+            koreanQuestion: "공정하게 사안을 해결하려는 양심적인 사람들은 항상 주변에 있다. 편견에 굴복하지 않고, 문제를 해결하려는 좋은 사람들이 항상 있다.",
+            koreanOptions: ["중요인물", "황송하게도 하여 주시다", "만병통치약", "열광자", "편협"],
+            answer: 5
+        },
+        {
+            number: "026",
+            question: "Do not ____ him with laziness; he has done his utmost in order to make desired results in front of his weak body.",
+            options: ["reproach", "slash", "surmise", "reinvigorate", "second"],
+            koreanQuestion: "그가 게으르다고 비난하지 마십시오. 그는 자신의 약한 체력에도 불구하고 소기의 성과를 내기위해 최선을 다했어요.",
+            koreanOptions: ["질책하다", "대폭 깎다", "추측하다", "활기를 되찾게 하다", "후원하다"],
+            answer: 1
+        },
+        {
+            number: "027",
+            question: "He was preparing to ____ his presidency and step out of the military and government career that occupied two thirds of his life.",
+            options: ["refute", "reinstate", "relinquish", "recoup", "scupper"],
+            koreanQuestion: "그는 대통령직을 그만두고 그의 인생의 2/3를 몸담아 온 군과 정부에서 물러날 준비를 하고 있었다.",
+            koreanOptions: ["반박하다", "복귀시키다", "포기하다", "되찾다", "망치다"],
+            answer: 3
+        },
+        {
+            number: "028",
+            question: "We cannot ____ expenses for which no receipts are provided by you, and therefore, you should not have given the receipts away.",
+            options: ["recapitulate", "refit", "venal", "reimburse", "vent"],
+            koreanQuestion: "영수증을 첨부하지 않은 경비는 상환해 줄 수 없습니다. 따라서 당신은 그 영수증을 버리지 말았어야 했습니다.",
+            koreanOptions: ["요점을 되풀이하다", "수리하다", "돈에 좌우되는", "배상하다", "분출하다"],
+            answer: 4
+        },
+        {
+            number: "029",
+            question: "They tried to ____ the antiquated law because it did not represent the change of the times any longer.",
+            options: ["sprawl", "revere", "repeal", "totter", "reconcile"],
+            koreanQuestion: "그들은 그 낡은 법이 시대의 변화를 나태내지 못했기 때문에, 이를 폐지하려 했다.",
+            koreanOptions: ["뻗어나가다", "존경하다", "폐지하다", "비틀거리다", "화해시키다"],
+            answer: 3
+        },
+        {
+            number: "030",
+            question: "The police have managed to ____ some of the stolen money, and, as a result, they can give at least $5 million back to the victims.",
+            options: ["suffocate", "trample", "retrieve", "foil", "underpin"],
+            koreanQuestion: "경찰이 간신히 도난당한 그 돈의 일부를 되찾았고 피해자에게 최소 5백만 불을 돌려 줄 수 있게 되었다.",
+            koreanOptions: ["질식시키다", "짓밟다", "회수하다", "좌절시키다", "버팀목을 대다"],
+            answer: 3
+        },
+        {
+            number: "031",
+            question: "The insect's color provides ____ from its enemies, so that they cannot notice its presence.",
+            options: ["camouflage", "carcinogen", "cronyism", "enzyme", "feat"],
+            koreanQuestion: "곤충의 색깔은 천적들로부터의 위장 수단이 되며, 그 결과, 천적들은 그 곤충의 존재를 인지하지 못한다.",
+            koreanOptions: ["위장", "발암물질", "연고주의", "효소", "위업"],
+            answer: 1
+        },
+        {
+            number: "032",
+            question: "The country's sudden breakup would undoubtedly lead to chaos and ____ which can claim the lives of more than million people.",
+            options: ["buzzword", "detente", "boon", "envoy", "carnage"],
+            koreanQuestion: "그 나라의 갑작스러운 분열은 틀림없이, 백만명 이상의 목숨을 앗아갈 혼란과 대학살로 이어질 것이었다.",
+            koreanOptions: ["전문용어", "긴장완화", "큰 은혜", "특사", "대학살"],
+            answer: 5
+        },
+        {
+            number: "033",
+            question: "The criminal's guilt was ____ because two people saw him steal.",
+            options: ["bananas", "devastating", "cantankerous", "clear-cut", "egalitarian"],
+            koreanQuestion: "두 사람이 그가 훔치는 것을 목격했기 때문에 그 범인은 유죄가 확실하다.",
+            koreanOptions: ["열광적인", "압도적인", "심술궂은", "선명한", "평등주의의"],
+            answer: 4
+        },
+        {
+            number: "034",
+            question: "The award was named after him to ____ his accomplishments.",
+            options: ["coddle", "bog down", "commemorate", "detach", "eradicate"],
+            koreanQuestion: "이 상은 그의 업적을 기리기 위해 그의 이름을 따서 지어진 것이다.",
+            koreanOptions: ["버릇없이 기르다", "수렁에 빠지다", "기념하다", "파견하다", "근절하다"],
+            answer: 3
+        },
+        {
+            number: "035",
+            question: "He was ____ the draft because the results of his conscription examination showed the man is too weak to be up to the duty.",
+            options: ["exempted from", "boiled down to", "capitulated", "depicted", "demoralize"],
+            koreanQuestion: "그가 군대 의무를 감당하기에는 너무 약하다는 신체검사로 인해, 그는 병역을 면제받았다",
+            koreanOptions: ["면제하다", "귀결되다", "항복하다", "묘사하다", "사기를 꺾다"],
+            answer: 1
+        },
+        {
+            number: "036",
+            question: "But now, as it prepares to host the 2002 Winter Olympics, Salt Lake finds itself ____ by allegations of corruption.",
+            options: ["tranquilized", "tentative", "transient", "surly", "vilified"],
+            koreanQuestion: "그러나 현재 2002년 동계 올림픽 주최를 준비 중인 Salt Lake 시는 부정한 수단을 사용했다는 비난 때문에 명예가 크게 실추되어 있다.",
+            koreanOptions: ["고요하게 만들다", "일시적인, 임시의", "일시적인", "퉁명스러운", "비방바다"],
+            answer: 5
+        },
+        {
+            number: "037",
+            question: "Experts ____ that the ceramic vase is at least three hundred years old, but it is just a conjecture, not a proof.",
+            options: ["waffle", "suppress", "tumble", "hypothesize", "stoke"],
+            koreanQuestion: "전문가들은 그 도자기가 적어도 3백 년 이상 된 것으로 추측하고 있다. 그러나 이는 단지 추측일 뿐, 증명이 아니다.",
+            koreanOptions: ["시시한 말", "억제하다", "폭락하다", "가설/추측하다", "불을 붙이다"],
+            answer: 4
+        },
+        {
+            number: "038",
+            question: "Even though a person from Department of Sanitation pointed out that his shop is very ____ he doesn't seem to correct it.",
+            options: ["unbiased", "squalid", "surly", "staunch", "torpid"],
+            koreanQuestion: "위생국에서 나온 사람이 그의 가게가 매우 더럽다고 지적했음에도 불구하고 그는 그것을 고칠 생각이 없어보였다.",
+            koreanOptions: ["편견이 없는", "누추한", "퉁명스러운", "든든한", "무감각한"],
+            answer: 2
+        },
+        {
+            number: "039",
+            question: "That message is rather ____ and, as one of those who insist on consistency and plausibility, I am unable to accept it.",
+            options: ["far-fetched", "subsidiary", "tranquil", "teeming", "tipsy"],
+            koreanQuestion: "그 메시지는 다소 설득력이 떨어지기에, 일관성과 타당성을 강조하는 사람 중 한 명인, 나로서는 그것을 받아들일 수 없다.",
+            koreanOptions: ["설득력이 떨어지는", "보조적인", "평온한", "북적대는", "취해서 비틀거리는"],
+            answer: 1
+        },
+        {
+            number: "040",
+            question: "He may seem dopy, but he is actually quite ____ making best decisions at the right time and place.",
+            options: ["unilateral", "shrewd", "spurious", "extraneous", "specious"],
+            koreanQuestion: "그는 어수룩해 보이지만, 사실은 적재적소에서 최고의 선택을 하는 상당히 빈틈없는 사람이다.",
+            koreanOptions: ["일방적인", "현명한", "가짜의", "관계없는", "외양만 그럴듯한"],
+            answer: 2
+        },
+        {
+            number: "041",
+            question: "Many villagers worry that local officials will not ____ them fairly or move them to good land.",
+            options: ["compensate", "conscript", "credit", "contain", "convene"],
+            koreanQuestion: "강 주변의 마을주민들은 현지 관리들이 보상을 하지 않거나 자신들을 좋은 땅으로 옮겨주지 않을 것을 우려하고 있다.",
+            koreanOptions: ["보상하다", "징집하다", "신뢰하다", "포함하다", "모으다"],
+            answer: 1
+        },
+        {
+            number: "042",
+            question: "Jake was too ____ to be arrested, so that the police used a taser gun to overcome his strong resistance.",
+            options: ["conciliatory", "compelling", "contumacious", "crowning", "cutting-edge"],
+            koreanQuestion: "Jake는 너무나 반항적이어서 체포할 수가 없었기 때문에, 경찰은 그의 반항적인 행동을 극복하기 위해 테이저 총을 사용했다.",
+            koreanOptions: ["회유적인", "강제적인; 설득력이 있는", "오만한", "최고의", "최첨단의"],
+            answer: 3
+        },
+        {
+            number: "043",
+            question: "Knowing that his students were distracted by the phones, the teacher threatened to ____ their phones if they kept using them in class.",
+            options: ["contravene", "confiscate", "disburse", "defraud", "foment"],
+            koreanQuestion: "자신의 학생들이 휴대전활 인해 수업에 집중을 하지 못한다고 생각한 그 교사는, 학생들이 수업 시간 에 계속 전화기를 사용하면 전화기를 압수/몰수하겠다고 위협했다.",
+            koreanOptions: ["위반하다", "몰수하다", "지급하다", "횡령하다", "조장하다"],
+            answer: 2
+        },
+        {
+            number: "044",
+            question: "Criminals so elaborately ____ these $20 bills that it is almost impossible to distinguish these bills from th egenuine ones.",
+            options: ["compensated", "courted", "forfeited", "counterfeited", "corroded"],
+            koreanQuestion: "범인들은 20달러짜리 지폐를 매우 정교하게 위조했기에, 이 지폐와 진짜 지폐를 구별하는 것이 거의 불가능하다.",
+            koreanOptions: ["보상하다", "구애하다", "몰수당하다", "위조하다", "부식하다"],
+            answer: 4
+        },
+        {
+            number: "045",
+            question: "With so little time and so many things to study before exams, some students pull all nighters so they can ____ the night before an exam.",
+            options: ["cow", "corroborate", "cram", "curb", "curry"],
+            koreanQuestion: "시험을 앞두고 공부할 시간은 너무 없고, 공부할 양은 너무 많은 상태에서, 어떤 학생들은 시험 전날 벼락치기를 하기 위해 밤샘 공부를 한다.",
+            koreanOptions: ["위협하다", "확증하다", "벼락치기하다; 억지로 넣다", "억제하다", "빗질하다"],
+            answer: 3
+        },
+        {
+            number: "046",
+            question: "The rebel planned to ____ the current government and set up a new regime.",
+            options: ["swamp", "subpoena", "throb", "ferment", "subvert"],
+            koreanQuestion: "반란세력은 현 정부를 전복시키려고 새로운 정권을 수립하려고 계획했다.",
+            koreanOptions: ["침수시키다", "소환하다", "약동하다", "발효(醱酵)하다", "전복시키다"],
+            answer: 5
+        },
+        {
+            number: "047",
+            question: "None of the three conferences led to any ____ results, and this was why they were called empty rhetorics without concrete substance.",
+            options: ["hypnotic", "tangible", "superficial", "tenacious", "sullen"],
+            koreanQuestion: "세 차례의 회담이 있었지만 가시적인 성과는 거두지 못했으며, 이런 이유로 이 회담들이 구체적인 내용이 없는 공허한 수사들이라고 불렸다.",
+            koreanOptions: ["최면의; 졸리는", "구체적인", "피상적인", "완고한", "토라진"],
+            answer: 2
+        },
+        {
+            number: "048",
+            question: "Experts are showing a(n) ____ attitude in talking about the prospect of interest rates, so that they are morally irritating the public.",
+            options: ["unsavory", "turbulent", "ephemeral", "sporadic", "whimsical"],
+            koreanQuestion: "전문가들은 금리를 전망하는 데 다소 조심스러운 모습을 보이고 있고, 그 결과, 도덕적인 면에서 대중들에게 짜증을 유발하고 있다.",
+            koreanOptions: ["도덕적으로 불미스러운", "떠들썩한", "일시적인", "북적대는", "다가오는"],
+            answer: 1
+        },
+        {
+            number: "049",
+            question: "Clark claimed that he had been ____ by the press and that he was not able to bear such criticism any longer.",
+            options: ["even-minded", "retorted", "throbbing", "traduced", "repatriated"],
+            koreanQuestion: "클라크는 언론이 자신을 비방하고 있고, 그러한 비난을 더 이상 감내할 수 없었다고 주장했다.",
+            koreanOptions: ["한결같은", "반박하다", "약동하다", "비방하다", "본국으로 송환하다"],
+            answer: 4
+        },
+        {
+            number: "050",
+            question: "Management and labor are at ____ over the percentage of wage increase.",
+            options: ["rectitude", "eulogy", "xenophobia", "tug of war", "writ"],
+            koreanQuestion: "노사 양측은 임금 인상 폭을 놓고 줄다리기를 하고 있다",
+            koreanOptions: ["정직", "송덕문", "외국인 공포증", "세력 싸움, 줄다리기", "공문서"],
+            answer: 4
+        },
+        {
+            number: "051",
+            question: "At her trial, both the judge and the jury found the woman ____ and put her on trial.",
+            options: ["inevitable", "congenial", "conspicuous", "culpable", "discreet"],
+            koreanQuestion: "그녀의 재판에서, 판사와 배심원단 모두 그녀가 유죄라고 판단했고 그녀를 재판에 회부했다.",
+            koreanOptions: ["불가피한", "붙임성이 좋은", "눈에 띄는", "비난할만한", "분별 있는, 신중한"],
+            answer: 4
+        },
+        {
+            number: "052",
+            question: "Spies had a ____ plan to steal secrets, so that they were able to do so without anyone knowing the theft.",
+            options: ["cut-rate", "crack", "covert", "comprehensive", "disingenuous"],
+            koreanQuestion: "첩자들은 비밀정보를 훔쳐 내기 위해 암암리에 계획을 세웠고 그 결과, 누구도 알지 못하게 그 일을 완수할 수 있었다.",
+            koreanOptions: ["할인가격의", "일류의", "은밀한", "제정신이 아닌", "솔직하지 못한"],
+            answer: 3
+        },
+        {
+            number: "053",
+            question: "We offered our sincere ____ to her at her husband's funeral and she did appreciate that.",
+            options: ["drawback", "detraction", "diatribe", "condolence", "crest"],
+            koreanQuestion: "우리는 그녀의 남편 장례식에서 진심으로 그녀를 애도했고 그녀도 이를 감사하게 생각했다.",
+            koreanOptions: ["결점", "훼손", "비방", "애도", "최상"],
+            answer: 4
+        },
+        {
+            number: "054",
+            question: "Both of the divorced couple wanted ____ of their children; Neither of them wanted to part with them.",
+            options: ["concession", "confidant", "copycat", "culmination", "custody"],
+            koreanQuestion: "이 이혼한 부부는 자신에 아이들에 대한 양육권을 원했다. 그 둘 중 그 누구도 아이들과 헤어지는 것을 원하지 않았다.",
+            koreanOptions: ["양보", "친구", "모방자", "최고점", "양육권"],
+            answer: 5
+        },
+        {
+            number: "055",
+            question: "The ____ in military spending has inevitably caused many bases to be closed.",
+            options: ["cutback", "crux", "crossroads", "corollary", "conspiracy"],
+            koreanQuestion: "군비 삭감으로 군 기지 여러 곳이 불가피하게 폐쇄되었다.",
+            koreanOptions: ["삭감", "급소", "갈림길", "결과", "음모"],
+            answer: 1
+        },
+        {
+            number: "056",
+            question: "The lantern that he was holding gradually ____ with him and at last disappeared in the dark.",
+            options: ["upstaged", "recouped", "worked out", "receded", "weathered"],
+            koreanQuestion: "그가 들고 있던 등불은 그와 함께 점점 멀어지더니, 드디어 어둠 속으로 사라졌다",
+            koreanOptions: ["-보다 인기를 얻다", "(손해를) 되찾다", "성취하다", "물러나다", "이겨내다"],
+            answer: 4
+        },
+        {
+            number: "057",
+            question: "The action of the government may have ____ all over the world and its consequent side effects will remain for long.",
+            options: ["repercussions", "schizophrenia", "wrath", "retribution", "watchdog"],
+            koreanQuestion: "정부의 이번 조치는 전 세계의 반향을 일으킬 것으로 보이며, 그 후유증은 오랜 기간 지속될 것으로 보인다.",
+            koreanOptions: ["영향", "정신분열", "격노", "보복", "감시자"],
+            answer: 1
+        },
+        {
+            number: "058",
+            question: "Kim, known to be ____, rarely appears live on television let alone in other more public occasions.",
+            options: ["multifarious", "well-rounded", "reclusive", "wholehearted", "rife"],
+            koreanQuestion: "은둔적인 성향으로 알려진 킴은, 여타 보다 공개적인 모임은 말할 것도 없고, 텔레비전에 생방송으로 출연하지도 않는다.",
+            koreanOptions: ["다양한", "포괄적인", "고립적인", "성의 있는", "만연한"],
+            answer: 3
+        },
+        {
+            number: "059",
+            question: "The government offered ____ to 4000 refugees; therefore, they could settle down in the country.",
+            options: ["stead", "strongman", "sanctuary", "quagmire", "score"],
+            koreanQuestion: "그 정부가 4,000명의 난민들에게 보호를 제공했다; 그 결과, 그들은 그 국가에서 정착할 수 있었다.",
+            koreanOptions: ["이익", "권력자", "보호구역", "곤경, 진퇴양난", "원한"],
+            answer: 3
+        },
+        {
+            number: "060",
+            question: "We had the ____ of the law to hunt in this place; so we enjoyed the sheer thrill of shooting live animals.",
+            options: ["sanction", "runoff", "sham", "setback", "vengeance"],
+            koreanQuestion: "우리는 이곳에서 사냥할 수 있는 법률적 인가를 받았고, 살아있는 동물을 사냥하는 그 본연의 스릴감을 즐겼다.",
+            koreanOptions: ["인가", "결선투표", "가짜(의)", "실패", "복수"],
+            answer: 1
+        },
+        {
+            number: "061",
+            question: "Children are sitting in classrooms that are totally unsafe, ____ and deteriorating.",
+            options: ["discerned", "disdained", "disavowed", "disparage", "dilapidated"],
+            koreanQuestion: "아이들은 매우 위험하고 허름하며 상태가 악화되는 교실들에 앉아있다.",
+            koreanOptions: ["구분하다", "경멸하다", "부인하다", "얕보다", "황폐하게 하다"],
+            answer: 5
+        },
+        {
+            number: "062",
+            question: "The players who lost the game collapsed to the ground, feeling ____ and despondent.",
+            options: ["dinggy", "dejected", "detrimental", "downright", "disillusioned"],
+            koreanQuestion: "경기에 진 선수들은, 허탈감과 낙담을 느끼며, 경기장에 주저앉았다",
+            koreanOptions: ["거무죽죽한", "낙담한", "해로운", "명백한, 노골적인, 솔직한", "환멸을 느끼는"],
+            answer: 2
+        },
+        {
+            number: "063",
+            question: "The journal is ____ free of charge, primarily via the internet, although sometimes in paper form too.",
+            options: ["discomfited", "dipped", "disseminated", "disfranchised", "dismantled"],
+            koreanQuestion: "그 잡지는 가끔은 신문형태로 배포되기도 하였지만, 우선적으로 인터넷을 통해 무료로 배포된다.",
+            koreanOptions: ["좌절시키다", "담그다, 급 하강하다", "흩어지다", "선거권을 박탈하다", "제거하다"],
+            answer: 3
+        },
+        {
+            number: "064",
+            question: "She seemed levelheaded and ____ in that she never made imprudent and excessively ideal decisions.",
+            options: ["down to earth", "disparate", "defunct", "die-hard", "discrete"],
+            koreanQuestion: "그녀가 결코 경솔하거나 지나치게 이상적인 결정을 하지 않았다는 점에서, 그녀는 분별 있고 현실적인 사람 같다.",
+            koreanOptions: ["현실적인", "이질적인", "죽은, 현존하지 않는", "끝까지 버티는", "별개의 분리된"],
+            answer: 1
+        },
+        {
+            number: "065",
+            question: "The players, who once enjoyed riding the unstoppable tide of victory, have been ____ by an ongoing series of defeats.",
+            options: ["designated", "decertified", "deployed", "denuclearized", "daunted"],
+            koreanQuestion: "과거 거칠 것 없는 승리의 물결을 누렸던 선술들이, 계속되는 패배로 사기 저하되었다",
+            koreanOptions: ["가리키다", "증명을 취소하다", "전개시키다", "핵무장을 금지하다", "기세가 꺾이다"],
+            answer: 5
+        },
+        {
+            number: "066",
+            question: "In view of the increase in energy costs, we should ____ our existing spending. For they were not designed to address such a sudden spike.",
+            options: ["reprimand", "hold sway", "revamp", "parlay", "racketeer"],
+            koreanQuestion: "에너지 비용이 증가한 것을 감안하여, 기존 지출 계획들을 수정해야 한다. 왜냐하면, 기존 계획들은 그러한 갑작스러운 급등을 해결하도록 의도되지 않았기 때문이다.",
+            koreanOptions: ["질책하다", "통제하다", "개조(하다)", "활용하다", "갈취하다"],
+            answer: 3
+        },
+        {
+            number: "067",
+            question: "____ health requires more than following a set of rigid diet rules; it also needs consuming an appropriate amount of calories.",
+            options: ["robust", "skeptical", "sitting", "thorny", "taxing"],
+            koreanQuestion: "건강하려면 엄격한 식단 규칙을 실행하는 것 이상의 노력이 필요하다. 건강을 위해서는 적정한 양의 칼로리의 섭취도 중요하다.",
+            koreanOptions: ["튼튼한", "회의적인", "현직의", "성가신", "힘든"],
+            answer: 1
+        },
+        {
+            number: "068",
+            question: "They are still ____ from the 4-0 defeat last week; it was definitely an unacceptable result.",
+            options: ["shunning", "smarting", "remitting", "resurrecting", "dovetailing"],
+            koreanQuestion: "그들은 지난주에 있은 4대0의 패배로 아직도 속상해 하고 있다; 이는 분명 받아들이기 힘든 결과였다.",
+            koreanOptions: ["피하다", "아파하다/ 분개하다", "감면하다/ 송금하다", "부활시키다", "마무리 짓다"],
+            answer: 2
+        },
+        {
+            number: "069",
+            question: "The dominance of Rome did ____ for many centuries, so much so that no one expected such a sudden collapse in the empire.",
+            options: ["deliberate", "surrender", "veer", "hold sway", "thrash out"],
+            koreanQuestion: "로마제국의 지배는 수세기동안 위력을 발휘했고, 이러한 분위기는 매우 강렬했기에, 그 누구도 그렇게 갑작스러운 붕괴를 예상하지 못했다.",
+            koreanOptions: ["심사숙고하다", "항복하다", "바뀌다", "위력을 발휘하다", "충분한 대화를 통해 해결하다"],
+            answer: 4
+        },
+        {
+            number: "070",
+            question: "They fought ____ over the right to manage the company for the failure to get the right means the immediate dismissal of all of them.",
+            options: ["tit for tat", "thriving", "tooth and nail", "vice versa", "rustically"],
+            koreanQuestion: "그들은 경영권을 놓고 치열한 쟁탈전을 벌인 이유는, 쟁탈의 실패는 즉각적인 모두의 해고를 의미했기 때문이다.",
+            koreanOptions: ["맞받아치는", "번영하고 있는", "필사적으로", "역도 마찬가지로", "시골풍으로"],
+            answer: 3
+        },
+        {
+            number: "071",
+            question: "The woman ____ with the salesman over the price of a camera.",
+            options: ["dickered", "defied", "deemed", "defused", "deported"],
+            koreanQuestion: "그 여자는 카메라 값을 놓고 판매원과 흥정을 했다.",
+            koreanOptions: ["흥정하다", "도전하다", "생각하다", "제거하다", "추방하다"],
+            answer: 1
+        },
+        {
+            number: "072",
+            question: "He looks as old as a person who is in his 60s and totally ____.",
+            options: ["domineering", "decrepit", "equivalent", "electoral", "ebullient"],
+            koreanQuestion: "그는 60세 먹은 노인처럼 보였고 완전히 노쇠해 보였다.",
+            koreanOptions: ["오만한", "노쇠한", "동등한", "선거권 있는", "원기 왕성한"],
+            answer: 2
+        },
+        {
+            number: "073",
+            question: "They ____ the spy when she returned from her mission.",
+            options: ["defused", "debriefed", "grudged", "emaciated", "dwarf"],
+            koreanQuestion: "그 사람들은 스파이가 임무를 마치고 돌아오자 결과 보고를 받았다.",
+            koreanOptions: ["위기를 해소하다", "보고받다", "원한을 품다", "여위게 하다", "무색하게 만들다"],
+            answer: 2
+        },
+        {
+            number: "074",
+            question: "His business is bankrupt and he is in ____ trouble.",
+            options: ["ebullient", "eclectic", "dire", "dormant", "distraught"],
+            koreanQuestion: "사업이 파산해서 그는 심각한 어려움에 빠져있다.",
+            koreanOptions: ["열광적인", "취사선택의", "비참한", "동면의", "제정신이 아닌"],
+            answer: 3
+        },
+        {
+            number: "075",
+            question: "The company offers unreasonable discounting, putting the distribution sector in ____.",
+            options: ["drawback", "dope", "distress", "disarray", "deluge"],
+            koreanQuestion: "그 업체는 비정상적인 가격 할인으로 유통 질서를 어지럽히고 있다",
+            koreanOptions: ["결점", "마약", "가난", "무질서", "범람"],
+            answer: 4
+        },
+        {
+            number: "076",
+            question: "It is not just refugees but all the Afghan people who are in a ____ situation.",
+            options: ["plucky", "remiss", "pivotal", "precarious", "smokestack"],
+            koreanQuestion: "피난민들 뿐 아니라 모든 아프가니스탄 사람들이 위험한 상황에 처해 있다.",
+            koreanOptions: ["용기 있는", "태만한", "현명한", "불안정한", "재래식 산업의"],
+            answer: 4
+        },
+        {
+            number: "077",
+            question: "The scene of the accident was ____ with groaning and crying of the wounded.",
+            options: ["smuggling", "pandemonium", "patsy", "traitor", "zenith"],
+            koreanQuestion: "사고 현장은 부상자들의 신음과 절규로 가득했다",
+            koreanOptions: ["밀수", "대혼란", "희생양", "반역자", "정점"],
+            answer: 2
+        },
+        {
+            number: "078",
+            question: "He was ____ for failing to pay his taxes.",
+            options: ["pampered", "prevailed", "yearned", "penalized", "wrecked"],
+            koreanQuestion: "그는 세금 미납으로 처벌을 받았다.",
+            koreanOptions: ["지나치게 잘해주다", "우세하다", "갈망하다", "벌을 주다", "파괴하다"],
+            answer: 4
+        },
+        {
+            number: "079",
+            question: "Far from being ____, he just kept making one excuse after another.",
+            options: ["palatable", "penitent", "riveting", "quibble", "rebellious"],
+            koreanQuestion: "그는 잘못을 뉘우치기는커녕 변명을 늘어놓기에 바빴다.",
+            koreanOptions: ["마음에 맞는", "뉘우치는", "매혹적인", "애매한 말", "반항적인"],
+            answer: 2
+        },
+        {
+            number: "080",
+            question: "Most of great achievements are achieved with ____ and strenuous work.",
+            options: ["parochial", "ramshackle", "persistent", "quixotic", "salient"],
+            koreanQuestion: "대부분의 위대한 업적은 지속적이고 고생스러운 작업으로 달성된다.",
+            koreanOptions: ["편협한", "흔들거리는", "지속적인", "비현실적인", "현저한"],
+            answer: 3
+        },
+        {
+            number: "081",
+            question: "I didn't intend to ____ but I just overheard what you said while studying in the next booth.",
+            options: ["emulate", "encompass", "earmark", "eavesdrop", "eclipse"],
+            koreanQuestion: "당신의 말을 의도적으로 들으려 해서 들은 것이 아니라, 옆 부스에서 공부를 하던 중 우연히 듣게 되었습니다.",
+            koreanOptions: ["우열을 겨루다", "포위하다", "귀표하다", "엿듣다", "쇠퇴하다"],
+            answer: 4
+        },
+        {
+            number: "082",
+            question: "Korea was ____ from Japanese colonial rule in 1945 and was able to be recognized as an independent entity in the international community.",
+            options: ["emancipated", "enforced", "entrenched", "eschewed", "entwined"],
+            koreanQuestion: "한국은 1945년에 일본의 식민 통치에서 해방되어 국제사회에서 독립된 존재로 인정받을 수 있었다.",
+            koreanOptions: ["해방하다", "강요하다", "참호로 에워싸다", "분출하다", "엉키게 하다"],
+            answer: 1
+        },
+        {
+            number: "083",
+            question: "The festival is to ____ everything from music, theater and ballet to literature, cinema and the visual arts.",
+            options: ["egg", "elapse", "eke", "engineer", "encompass"],
+            koreanQuestion: "그 축제는 음악, 연극, 발레에서 문학, 영화, 시각예술까지 모든 것을 포함할 예정이다.",
+            koreanOptions: ["선동하다", "경과하다", "경과하다", "감독하다", "포함하다"],
+            answer: 5
+        },
+        {
+            number: "084",
+            question: "Denying children's toilet use as a penalty by teachers is an ____ abuse of adult power.",
+            options: ["egregious", "endangered", "elusive", "embattled", "equitable"],
+            koreanQuestion: "교사들이 벌로써 어린이의 화장실 사용을 막는 것은 터무니없는 힘의 남용이다.",
+            koreanOptions: ["터무니없는", "멸종위기의", "잡히지 않는", "적에게 포위된", "정당한"],
+            answer: 1
+        },
+        {
+            number: "085",
+            question: "He ____ company funds to pay for his vacation, which constitutes without a doubt an act of illegality.",
+            options: ["embezzled", "enfranchised", "exacerbated", "expurgated", "evinced"],
+            koreanQuestion: "그는 휴가 비용을 위해서 회사 공금을 횡령했고, 이는 명백한 불법 행위를 구성한다.",
+            koreanOptions: ["횡령하다", "선거권을 주다", "악화시키다", "삭제하다", "명시하다"],
+            answer: 1
+        },
+        {
+            number: "086",
+            question: "The police have a suspected criminal under ____ so as to arrest him as soon as they can prove he perpetrated the crime.",
+            options: ["nominee", "noose", "exile", "surveillance", "obstacle"],
+            koreanQuestion: "경찰은 그 용의자가 범죄를 저지른 것을 증명하기만 하면 그를 바로 체포할 수 있도록 현재 그를 감시하고 있다.",
+            koreanOptions: ["후보자", "올가미", "초심자", "감시", "장애"],
+            answer: 4
+        },
+        {
+            number: "087",
+            question: "Due to ____ and indiscriminate poaching, the number of wild animals is declining fast.",
+            options: ["palatable", "relentless", "evanescent", "obviate", "serene"],
+            koreanQuestion: "무분별한 밀렵으로 야생동물의 숫자가 급속도로 줄고 있다.",
+            koreanOptions: ["마음에 드는", "끈질긴", "마약성의", "제거하다", "고집 센"],
+            answer: 2
+        },
+        {
+            number: "088",
+            question: "My brother's voting for me by ____ in the club elections because I am in France and cannot attend the occasion myself.",
+            options: ["odds", "noose", "nettle", "nerd", "proxy"],
+            koreanQuestion: "내가 프랑스에 있어 그 행사에 참석할 수 없기 때문에, 이번 클럽 선거에서 형이 나의 대리로서 투표를 하고 있다.",
+            koreanOptions: ["가능성", "올가미", "쐐기풀", "멍청하고 따분한 사람", "대리"],
+            answer: 5
+        },
+        {
+            number: "089",
+            question: "There is intense competition to enter the ____ universities in Korea that most Korean highschool students long for.",
+            options: ["prestigious", "nerve-racking", "open-ended", "ostentatious", "overblown"],
+            koreanQuestion: "한국에서는 대부분의 고등학생들이 갈망하는 명문 대학들에 들어가기 위한 경쟁이 치열하다.",
+            koreanOptions: ["명망 있는", "안절부절못하게 하는", "제약을 두지 않는", "허세부리는", "과장된"],
+            answer: 1
+        },
+        {
+            number: "090",
+            question: "Far from being ____, he just kept making one excuse after another.",
+            options: ["palpable", "opaque", "penitent", "paltry", "oblique"],
+            koreanQuestion: "그는 잘못을 뉘우치기는커녕 변명을 늘어놓기에 바빴다.",
+            koreanOptions: ["명백한", "불투명한", "회개하는", "편협한", "완곡한"],
+            answer: 3
+        },
+        {
+            number: "091",
+            question: "Things started badly and soon got ____, leading to much worse situations.",
+            options: ["exacerbated", "exerted", "exploited", "exterminated", "evoked"],
+            koreanQuestion: "일이 순조롭지 못하더니, 사태가 곧 악화되어, 종전보다 훨씬 열악한 상황들로 이어졌다.",
+            koreanOptions: ["악화시키다", "발휘하다", "착취하다", "노출하다", "불러일으키다"],
+            answer: 1
+        },
+        {
+            number: "092",
+            question: "Bankers became hate figures in the 1930s, and they are equally ____ today because of the devastating financial crisis stemming from their greed.",
+            options: ["extirpated", "excoriated", "expropriated", "extorted", "elicited"],
+            koreanQuestion: "은행 간부들은 1930년대에 증오의 대상 인물들이 되었다. 그리고 그들의 탐욕에서 기인한 엄청난 금융 위기로 인해, 그때와 똑같은 혹평을 받는다.",
+            koreanOptions: ["근절시키다", "통렬히 비난하다", "징수하다", "갈취하다", "이끌어내다"],
+            answer: 2
+        },
+        {
+            number: "093",
+            question: "Given the fact that he does not regret his ruthless behavior, nobody can ____ his relentless cruelty.",
+            options: ["extenuate", "fumble", "haggle", "galvanize", "fume"],
+            koreanQuestion: "그가 자신의 가차 없는 행동을 후회하지 않는다는 점을 감안하면 그 누구도 그의 잔인함에 (경감할) 정상 참작의 여지를 둘 수 없다.",
+            koreanOptions: ["경감하다", "더듬어 찾다", "옥신각신하다", "충격 요법을 쓰다", "조장하다"],
+            answer: 1
+        },
+        {
+            number: "094",
+            question: "The British government attempted to ____ the suspects from Belgium in the Conservative party over the years during which the personnel policies of the two countries had reached a treaty to send criminals to each other.",
+            options: ["equate", "espouse", "evacuate", "extradite", "erupt"],
+            koreanQuestion: "양국이 범죄자들을 상호 국가에 보내는 조약에 합의를 했기 때문에, 영국 정부는 그 용의자들을 벨기에로부터 송환하려고 시도했다.",
+            koreanOptions: ["동등하게 다루다", "지지하다", "피난시키다", "송환하다", "분출하다"],
+            answer: 4
+        },
+        {
+            number: "095",
+            question: "Driving is also a hobby, especially at night when the ____ lights reflecting from all over exhilarates me with as the atmosphere.",
+            options: ["garrulous", "evanescent", "exhilarates", "entreats", "endorses"],
+            koreanQuestion: "운전은 또한 취미인데, 주로 밤에 하는 드라이브가 빛의 반사로 인해 나를 들뜨게 만든다.",
+            koreanOptions: ["수다스러운", "덧없는", "들뜨게 하다", "탄원하다", "지지하다"],
+            answer: 3
+        },
+        {
+            number: "096",
+            question: "I began to learn it two years earlier than James, but I have already been ____ by him.",
+            options: ["outstripped", "racketeer", "obsessed", "nullified", "exulted"],
+            koreanQuestion: "내가 제임스보다 그것을 2년 앞서 배우기 시작했는데 지금은 그가 앞질러 버렸다.",
+            koreanOptions: ["앞지르다", "착취/강탈하다", "집착하다", "무효로 만들다", "고정하다"],
+            answer: 1
+        },
+        {
+            number: "097",
+            question: "Their products are ____ for poor quality and unlikely to be accepted by the consumers.",
+            options: ["off-limits", "one-off", "one-on-one", "no-holds-barred", "notorious"],
+            koreanQuestion: "그 회사 제품들은 질이 형편없기로 악명 높고 소비자들로부터 외면 받을 가능성이 높다.",
+            koreanOptions: ["출입금지의", "단 한번의", "일대일로", "치열한", "악명 높은"],
+            answer: 5
+        },
+        {
+            number: "098",
+            question: "Right now, it is a very ____ stage, so that it is hard to make a matured form of products.",
+            options: ["nascent", "ongoing", "petulant", "open-door", "narcotic"],
+            koreanQuestion: "지금, 그것은 아주 초기단계에 있기에, 그 결과, 완성된 형태의 제품들을 만드는 것은 힘들다.",
+            koreanOptions: ["초기의", "계속진행중인", "불투명한", "문호개방의", "마취성의"],
+            answer: 1
+        },
+        {
+            number: "099",
+            question: "My thought was that ____ was the product of Conservative party over the years during which the personnel policies of the party was implemented unfairly.",
+            options: ["news conference", "nonaligned foreign policy", "nouveauriche", "nepotism", "novice"],
+            koreanQuestion: "나의 생각으론 정실인사는 수년 동안에 걸처 보수당이 만든 산물이었고, 이 기간 동안, 보수당의 인사정책은 불공정하게 집행되었다.",
+            koreanOptions: ["기자회견", "비동맹 외교정책", "벼락부자", "친족 등용", "초보자"],
+            answer: 4
+        },
+        {
+            number: "100",
+            question: "The President remains ____ on the question of cutting taxes and refuses to accept other opinions.",
+            options: ["obdurate", "opulent", "garrulous", "old-fashioned", "figurative"],
+            koreanQuestion: "대통령은 세금 삭감 문제에 대해 완고한 입장을 고수했고 다른 의견들을 거부하고 있다.",
+            koreanOptions: ["고집 센", "풍부한", "속속들이", "구식의", "완곡한"],
+            answer: 1
+        },
+        {
+            number: "101",
+            question: "Because the parts are so specialized, many of them are unavailable commercially and have to be ____ in the plant's own machine shop.",
+            options: ["fabricated", "flourished", "galvanized", "flanked", "implored"],
+            koreanQuestion: "부품들이 너무 특수해서, 부품 중 상당수는 시중에서 구할 수가 없고, 그 공장이 직영하는 기계 공작소에서 맞춤 제작해야 한다.",
+            koreanOptions: ["제작하다, 꾸며내다", "번영하다", "활기를 띄게 하다", "측면을 공격하다", "애원하다"],
+            answer: 1
+        },
+        {
+            number: "102",
+            question: "One morning, I didn't want to go to school, and decided to ____ Illness.",
+            options: ["flay", "ferment", "falter", "flag", "feign"],
+            koreanQuestion: "어느 날 아침, 난 학교에 가기 싫었고, 그래서 아픈 척하기로 마음먹었다.",
+            koreanOptions: ["혹평하다", "발효시키다", "비틀거리다", "시들다", "가장하다"],
+            answer: 5
+        },
+        {
+            number: "103",
+            question: "It was a disappointing performance which lacked ____.",
+            options: ["flak", "finesse", "fad", "facade", "fastness"],
+            koreanQuestion: "그것은 섬세한 기교가 떨어지는 실망스러운 공연이었다.",
+            koreanOptions: ["혹평", "기교", "일시적 유행", "표면", "고착"],
+            answer: 2
+        },
+        {
+            number: "104",
+            question: "It's a pity to lie ____ your gift.",
+            options: ["far-flung", "fast", "fallow", "feeble", "flamboyant"],
+            koreanQuestion: "당신의 재능을 썩히고 있어서 유감이다.",
+            koreanOptions: ["광범위한", "단단히 붙은, 확고히", "경작하지 않은", "연약한", "화려한"],
+            answer: 3
+        },
+        {
+            number: "105",
+            question: "That is rather ____ and I am unable to believe it.",
+            options: ["far-flung", "far-reaching", "phony", "fervent", "federal"],
+            koreanQuestion: "그것은 상당히 거짓이기에 나는 그것을 믿을 수가 없다.",
+            koreanOptions: ["광범위한", "멀리까지 미치는", "거짓의", "열렬한", "연방정부의"],
+            answer: 3
+        },
+        {
+            number: "106",
+            question: "His wife used to ____ him at every opportunity.",
+            options: ["nettle", "noose", "nag", "privy", "prune"],
+            koreanQuestion: "그의 마누라는 틈만 나면 바가지를 긁곤 했다.",
+            koreanOptions: ["초조하게 하다", "올가미로 잡다", "잔소리하다", "사적인", "잘라내다"],
+            answer: 3
+        },
+        {
+            number: "107",
+            question: "He is ____ for fouling other's name at work.",
+            options: ["notorious", "prop", "proliferate", "neuter", "nibble"],
+            koreanQuestion: "그는 직장 내에서 다른 이들의 험담을 하기로 악명 높다.",
+            koreanOptions: ["악명 높다", "떠받치다", "증식하다", "거세하다", "조금씩 갉아먹다"],
+            answer: 1
+        },
+        {
+            number: "108",
+            question: "North Korea is one of the most ____ and unpredictable of nations.",
+            options: ["on hold", "obdurate", "on offer", "onerous", "obsolete"],
+            koreanQuestion: "북한은 가장 완고하고 예측 불허한 국가들 중에 하나다.",
+            koreanOptions: ["연기된", "완고하다", "매물로 나와 있는", "짐이 되는", "뒤떨어진"],
+            answer: 2
+        },
+        {
+            number: "109",
+            question: "It is a rather ____ area and concept.",
+            options: ["odds", "offshoot", "nascent", "obscure", "nerve-racking"],
+            koreanQuestion: "그것은 다소 불명확한 영역이자 개념이다.",
+            koreanOptions: ["확률", "파생적 결과", "초기의", "모호한", "신경을 건드리는"],
+            answer: 4
+        },
+        {
+            number: "110",
+            question: "Real authority of the country lay in the hands of a small ____ of noble families.",
+            options: ["nicety", "nix", "oligarchy", "obstacle", "obscene"],
+            koreanQuestion: "그 나라의 실권은 소수 귀족 가문들의 손에 있다.",
+            koreanOptions: ["미묘한 점", "무", "족벌정치", "장애물", "음란한"],
+            answer: 3
+        },
+        {
+            number: "111",
+            question: "She'd had the ____ to sell her house just before house prices came down.",
+            options: ["foresight", "feature", "faction", "facade", "fortress"],
+            koreanQuestion: "그녀는 선견지명이 있어서 집값이 떨어지기 직전에 집을 팔았다.",
+            koreanOptions: ["선견지명", "특징", "당파", "외관", "요새"],
+            answer: 1
+        },
+        {
+            number: "112",
+            question: "That ____ is crazy, illegitimate and extreme.",
+            options: ["foolproof", "foolhardy", "forlorn", "fractious", "frantic"],
+            koreanQuestion: "저게 바로 극과 극으로 무모하고 어이없고 미친 짓이다.",
+            koreanOptions: ["못될 수가 없는, 절대 확실한", "저돌적인", "고독한", "성마른", "필사적인"],
+            answer: 2
+        },
+        {
+            number: "113",
+            question: "Try to anticipate what your child will do and ____ problems.",
+            options: ["forestall", "forgo", "forsake", "fumble", "galvanize"],
+            koreanQuestion: "자녀가 무엇을 할 것인지를 예상하여 문제를 미연에 방지하도록 노력하라.",
+            koreanOptions: ["앞지르다", "보류하다", "포기하다", "실수하다", "활기를 띄게 하다"],
+            answer: 1
+        },
+        {
+            number: "114",
+            question: "He did not suffer from the disease, but the wounds to his psyche would ____ for the rest of his life.",
+            options: ["gird", "handpick", "haggle", "hobble", "fester"],
+            koreanQuestion: "그는 그 병으로 고통 받지는 않았지만 정신적 상처는 그의 나머지 인생을 악화시켰다.",
+            koreanOptions: ["대비하다", "정선하다", "논쟁하다", "방해하다", "괴롭히다"],
+            answer: 5
+        },
+        {
+            number: "115",
+            question: "Opinion polls are in favour, but public opinion is ephemeral and ____.",
+            options: ["go-ahead", "fickle", "fast", "hard-and-fast", "halcyon"],
+            koreanQuestion: "의견 조사는 긍정적이지만, 여론 조사는 일시적이고 변화가 심하다.",
+            koreanOptions: ["진취적인", "변하기 쉬운", "단단히 붙은", "확정된", "평화로운"],
+            answer: 2
+        },
+        {
+            number: "116",
+            question: "She played the guitar with ____ fingers.",
+            options: ["nimble", "ominous", "obsess", "pivotal", "parochial"],
+            koreanQuestion: "그녀는 빠른 손놀림으로 기타를 연주한다.",
+            koreanOptions: ["빠른", "불길한", "집착하다", "중추적인", "편협한"],
+            answer: 1
+        },
+        {
+            number: "117",
+            question: "She bought ____ of much quantity and got her nose cold.",
+            options: ["pillage", "narcotic", "piffle", "perfidy", "pasty"],
+            koreanQuestion: "그녀는 많은 양의 마약을 사서 코로 흡입했다.",
+            koreanOptions: ["약탈", "마약", "헛소리", "배반", "창백한"],
+            answer: 2
+        },
+        {
+            number: "118",
+            question: "They sent their youngest boy, who's a real ____, off to the army.",
+            options: ["nuisance", "ongoing", "pillage", "pinpoint", "pirate"],
+            koreanQuestion: "그들은 애물단지인 막내아들을 군대에 보냈다.",
+            koreanOptions: ["골칫거리", "진행", "약탈", "협정", "만병통치약"],
+            answer: 1
+        },
+        {
+            number: "119",
+            question: "He is so ____ that he won't listen to anybody.",
+            options: ["optimal", "ostensible", "opulent", "obstinate", "ostentatious"],
+            koreanQuestion: "그는 벽창호라 누구 말도 듣지 않는다.",
+            koreanOptions: ["최적의", "표면적인", "부유한", "고집 센", "과시하는"],
+            answer: 4
+        },
+        {
+            number: "120",
+            question: "He also said that they were ____ and deplorable.",
+            options: ["outlay", "outlaw", "odious", "pact", "panacea"],
+            koreanQuestion: "그는 그들이 혐오스럽고 개탄스럽다고 덧붙였다",
+            koreanOptions: ["지출", "무법자", "혐오스런", "협정", "만병통치약"],
+            answer: 3
+        },
+        {
+            number: "121",
+            question: "He gave the police officer a ____ excuse for not stopping at the red light.",
+            options: ["glib", "gloomy", "generic", "giddy", "glaring"],
+            koreanQuestion: "그는 경관에게 적신호에서 멈추지 않은 것에 대해 그럴듯한 변명을 했다.",
+            koreanOptions: ["유창한, 그럴듯한", "우울한", "일반적인, 포괄적인", "현기증 나는", "번쩍번쩍 빛나는, 노려보는"],
+            answer: 1
+        },
+        {
+            number: "122",
+            question: "The workers had many ____ about their terrible working conditions.",
+            options: ["gaffes", "genocide", "grievances", "inferno", "inmates"],
+            koreanQuestion: "그 노동자들은 그들의 가혹한 작업 환경에 관하여 많은 고충이 있었다.",
+            koreanOptions: ["실수", "계획적 대량학살", "불만", "지옥", "수감자"],
+            answer: 3
+        },
+        {
+            number: "123",
+            question: "This was completely wrong and ____ unnecessary.",
+            options: ["immaculate", "incongruous", "gratuitous", "giddy", "gregarious"],
+            koreanQuestion: "이것은 완전히 쓸데없고, 잘못되었으며 불필요했다.",
+            koreanOptions: ["오점없는", "부조리한", "무료의, 불필요한", "현기증 나는", "군집하는, 사교적인"],
+            answer: 3
+        },
+        {
+            number: "124",
+            question: "This morning's newspaper reports all the ____ details of the murder.",
+            options: ["ghastly", "hereditary", "headlong", "highhanded", "hardpressed"],
+            koreanQuestion: "오늘 아침 신문은 그 살인에 대한 무시무시한 세부 사항을 낱낱이 보도했다.",
+            koreanOptions: ["무서운", "세습의", "무모한", "고압적인", "곤궁한"],
+            answer: 1
+        },
+        {
+            number: "125",
+            question: "Publicity is a ____ in that firm. It is shared between the marketing and design divisions.",
+            options: ["impairs", "groundwork", "gray area", "geopolitics", "gamut"],
+            koreanQuestion: "홍보 담당이 그 회사에서는 부서가 확실하지 않다. 마케팅 부문과 디자인 부문이 함께 담당하고 있다.",
+            koreanOptions: ["곤경", "토대, 기초", "애매한 부분, 중간지역", "지정학", "전범위"],
+            answer: 3
+        },
+        {
+            number: "126",
+            question: "She feels terrible, she is absolutely ____ by the whole thing.",
+            options: ["manipulated", "muffed", "moonlighted", "muddled", "mortified"],
+            koreanQuestion: "그녀는 비참함을 느꼈다, 그녀는 모든 일로 인해 절대적인 굴욕감을 느꼈다.",
+            koreanOptions: ["조작하다", "실수(하다)", "부업을 하다", "혼란시키다", "굴욕감을 느끼게 하다"],
+            answer: 5
+        },
+        {
+            number: "127",
+            question: "____ matters such as eating and drinking do not interest her.",
+            options: ["Mundane", "malignant", "makeshift", "momentary", "morbid"],
+            koreanQuestion: "먹고 마시는 것과 같은 세속적인 일은 그녀의 흥미를 끌지 못한다.",
+            koreanOptions: ["현세의, 평범한", "악의있는", "일시적인", "순간의", "병적인"],
+            answer: 1
+        },
+        {
+            number: "128",
+            question: "The homicidal mania had killed 20 people since first ____, finally got the electric chair.",
+            options: ["militia", "murder", "mantra", "malnutrition", "magnate"],
+            koreanQuestion: "그 살인마는 첫 번째 살인 이래로 20명의 사람을 죽였고, 결국 전기의자로 사형 당했다.",
+            koreanOptions: ["의용군", "살인", "주문", "영양실조", "권력자"],
+            answer: 2
+        },
+        {
+            number: "129",
+            question: "During the war, officials ____ the newspaper, TV, and radio.",
+            options: ["mince", "mesmerize", "mothball", "muzzle", "outgrow"],
+            koreanQuestion: "전쟁 중에 정부 관리들은 신문, 텔레비전, 라디오의 언론의 자유를 억압했다.",
+            koreanOptions: ["잘게 썰다", "최면술을 걸다", "간수해 두다", "말 못하게 하다", "보다 커지다"],
+            answer: 4
+        },
+        {
+            number: "130",
+            question: "Later on, a ____ brings in before and after photos of dead bodies.",
+            options: ["mortician", "manifesto", "mastermind", "mediator", "mercenary"],
+            koreanQuestion: "나중에 장의사가 죽은 사람들의 생전과 생후 사진을 가지고 온다.",
+            koreanOptions: ["장의사", "성명서", "지도자", "중재인", "용병, 고용된 사람"],
+            answer: 1
+        },
+        {
+            number: "131",
+            question: "The tribunal will determine which Khmer Rouge leaders will face trial on charges of ____ and crimes against humanity.",
+            options: ["hangover", "hideout", "genocide", "glut", "genome"],
+            koreanQuestion: "재판소는 집단학살과 반인도주의적인 범죄 혐의로 기소될 크메르 루즈 지도자들을 결정하게 됩니다.",
+            koreanOptions: ["잔존물", "은신처", "계획적 대량 학살", "과잉", "게놈, 생물 유전체"],
+            answer: 3
+        },
+        {
+            number: "132",
+            question: "By the time the police arrived, the criminals had already made their ____.",
+            options: ["mercenary", "merger", "gut", "getaway", "gumshoe"],
+            koreanQuestion: "경찰이 도착했을 때는 범인들이 이미 도주한 뒤였다",
+            koreanOptions: ["용병. 고용된 사람", "합병", "용기", "도주", "탐정"],
+            answer: 4
+        },
+        {
+            number: "133",
+            question: "He is the ____ guy you can meet at a party who has too many tales to tell and knows all the people.",
+            options: ["gargantuan", "garrulous", "glaring", "headlong", "heinous"],
+            koreanQuestion: "그는 파티에서 보통 만날 수 있는 이야깃거리를 많이 알고 모든 사람을 알고 있는 말이 많은 남자다.",
+            koreanOptions: ["거대한", "수다스러운", "눈부신, 틀림없는", "곧바로, 무모한", "극악무도한"],
+            answer: 2
+        },
+        {
+            number: "134",
+            question: "She was still ____ over her rival's disappointment.",
+            options: ["gloating", "halting", "keeling", "mulling", "presiding to preside"],
+            koreanQuestion: "그녀는 아직도 경쟁자의 실의를 고소해 하고 있었다.",
+            koreanOptions: ["고소해하다", "중단하다", "전복되다", "엉망으로 만들다, 곰곰이 생각하다", "통솔하다, 주재하다"],
+            answer: 1
+        },
+        {
+            number: "135",
+            question: "The Mission put before me was a gruesome and ____ task.",
+            options: ["ghastly", "get-tough", "go-ahead", "gratuitous", "grueling"],
+            koreanQuestion: "내 앞에 주어진 과제는 끔찍하고 호된 업무였다.",
+            koreanOptions: ["무서운", "강인한", "진취적인", "무료의, 불필요한", "녹초로 만드는"],
+            answer: 5
+        },
+        {
+            number: "136",
+            question: "Don't ____ in my affairs. Just stay out of the way.",
+            options: ["muzzle", "meddle", "mortgage", "nibble", "mantle"],
+            koreanQuestion: "내 일에 상관 말고 저리 비켜요.",
+            koreanOptions: ["말 못하게 하다", "간섭하다", "저당 잡히다", "조금씩 갉아먹다", "제거하다"],
+            answer: 2
+        },
+        {
+            number: "137",
+            question: "I believe that air pollution is a ____ to our health.",
+            options: ["meningitis", "microcosm", "megrim", "menace", "momentum"],
+            koreanQuestion: "나는 공기 오염이 우리 건강에 해를 끼친다고 생각해",
+            koreanOptions: ["뇌막염", "축소판", "편두통", "위협", "추진력"],
+            answer: 4
+        },
+        {
+            number: "138",
+            question: "Disturbing coincidences begin to ____ and frighten him.",
+            options: ["mitigate", "mortgage", "mesmerize", "nab", "obliterate"],
+            koreanQuestion: "이렇게 동시다발적인 혼란은 그를 당혹스럽고 놀랍게 만들고 있다.",
+            koreanOptions: ["완화하다", "저당 잡히다", "최면술을 걸다", "체포하다", "말살하다"],
+            answer: 3
+        },
+        {
+            number: "139",
+            question: "She is ____ in spelling every word correctly in her reports.",
+            options: ["optimal", "momentous", "meticulous", "malicious", "ostentatious"],
+            koreanQuestion: "그녀는 보고서의 매 단어마다 정확한 철자를 쓰려고 매우 세심하게 주의를 한다.",
+            koreanOptions: ["최선의", "중대한", "매우 세심한", "악의 있는", "과시하는"],
+            answer: 3
+        },
+        {
+            number: "140",
+            question: "All vegetables used in this recipe are to be ____ very fine.",
+            options: ["minced", "mired", "maneuvered", "nailed", "negated"],
+            koreanQuestion: "이 조리법에 쓰이는 야채들은 모두 잘게 썰어야 한다.",
+            koreanOptions: ["다지다", "곤경에 몰아넣다", "책략을 쓰다", "고정하다", "무효로 하다"],
+            answer: 1
+        },
+        {
+            number: "141",
+            question: "I agree it is worth ____ for a discount.",
+            options: ["haggling", "handpicking", "quipping", "harnessing", "underpinning"],
+            koreanQuestion: "나도 디스카운트를 받기 위해 흥정하는 것은 보람이 있다고 동의 한다.",
+            koreanOptions: ["말다툼하다", "정선하다", "비꼬다", "이용하다", "지지하다"],
+            answer: 1
+        },
+        {
+            number: "142",
+            question: "I got drunk last night and now I have a ____.",
+            options: ["haven", "heresy", "hangover", "quackery", "highflier"],
+            koreanQuestion: "어젯밤 과음해서 지금도 숙취 상태다.",
+            koreanOptions: ["도피처", "이교도", "숙취", "사기꾼", "야심가"],
+            answer: 3
+        },
+        {
+            number: "143",
+            question: "Many children are ____ victims of this war.",
+            options: ["hair splitting", "hair-trigger", "halfhearted", "viral", "hapless"],
+            koreanQuestion: "많은 어린이들이 이 전쟁의 불행한 희생자이다.",
+            koreanOptions: ["사소히 따지는", "위험촉발의, 민감한", "마지못한", "바이러스성의", "불운한"],
+            answer: 5
+        },
+        {
+            number: "144",
+            question: "All sub-schools are inside one building, so it is very ____ inside.",
+            options: ["hectic", "hereditary", "headlong", "highhanded", "hardpressed"],
+            koreanQuestion: "한 건물 안에 모든 부속학교가 다 있어서 매우 혼잡하다",
+            koreanOptions: ["열띤", "유전의", "경솔한", "고압적인", "곤궁한"],
+            answer: 1
+        },
+        {
+            number: "145",
+            question: "Shorter days are the ____ of wintertime.",
+            options: ["hogwash", "homage", "hemorrhage", "herald", "homicide"],
+            koreanQuestion: "낮이 점점 짧아지는 것은 겨울이 온다는 전조이다.",
+            koreanOptions: ["허풍", "존경", "출혈", "보도자", "살인행위"],
+            answer: 4
+        },
+        {
+            number: "146",
+            question: "The advertisements ____ the beauty of the public park.",
+            options: ["mitigate", "muddle", "mar", "mollify", "mortify"],
+            koreanQuestion: "광고가 공원의 풍경을 망친다.",
+            koreanOptions: ["완화하다", "뒤섞다", "망치다", "완화하다", "굴욕감을 느끼게 하다"],
+            answer: 3
+        },
+        {
+            number: "147",
+            question: "She's delirious, but has ____ intervals.",
+            options: ["mundane", "malignant", "latent", "lucid", "lopsided"],
+            koreanQuestion: "그녀는 정신이 온전하지 못하지만 잠깐씩 맑은 정신일 때도 있다.",
+            koreanOptions: ["세속적인", "악의 있는", "숨어있는", "명료한, 제 정신인", "한쪽으로 기운"],
+            answer: 4
+        },
+        {
+            number: "148",
+            question: "Others are trying to buy ____ Asian and European routes which have experienced rapid growth in recent years.",
+            options: ["ludicrous", "long-winded", "moribund", "lucrative", "lewd"],
+            koreanQuestion: "다른 항공사들은 최근 몇 년간 급신장을 해 이익을 많이 내는 아시아-유럽 노선을 사들이려 하고 있다.",
+            koreanOptions: ["우스꽝스런", "장황한", "다죽어가는", "이윤이 남는", "외설적인"],
+            answer: 4
+        },
+        {
+            number: "149",
+            question: "It has been raining steadily all day with no ____.",
+            options: ["nuke", "nutshell", "line-item veto", "letup", "nadir"],
+            koreanQuestion: "쉬지 않고 하루 종일 계속 비가 오고 있다.",
+            koreanOptions: ["원자력 발전소", "껍질", "부분 거부권", "감소, 정지", "절망상태"],
+            answer: 4
+        },
+        {
+            number: "150",
+            question: "She underwent a heart transplant in a ____ attempt to save her.",
+            options: ["momentary", "narcotic", "mortal", "middle-of-the-road", "last-ditch"],
+            koreanQuestion: "그녀는 목숨을 보전하기 위한 최후의 시도로 심장 이식 수술을 받았다.",
+            koreanOptions: ["순간적인", "마취성의", "죽을 운명의, 치명적인", "중도파의", "막바지의"],
+            answer: 5
+        },
+        {
+            number: "151",
+            question: "The nobles paid ____ to the king by bowing to him.",
+            options: ["hooligan", "hustler", "homage", "hot water", "hubris"],
+            koreanQuestion: "귀족들은 왕에게 절을 하여 경의를 표했다.",
+            koreanOptions: ["무뢰한", "사기꾼", "존경", "곤란", "오만"],
+            answer: 3
+        },
+        {
+            number: "152",
+            question: "The trickster's role is basically to ____ the hero's progress and to try to make trouble for the hero as much as possible.",
+            options: ["haul", "head", "hamper", "heel", "harness"],
+            koreanQuestion: "악당의 역할은 기본적으로 영웅의 임무수행을 훼방 놓고 가능한 많은 말썽을 피워 영웅을 괴롭히는 것이에요.",
+            koreanOptions: ["운반하다, 고치다", "이끌다", "방해하다", "충실히 따르다", "이용하다"],
+            answer: 3
+        },
+        {
+            number: "153",
+            question: "It was difficult to hear what he was saying over the ____.",
+            options: ["incinerator", "hubbub", "invective", "iota", "integrity"],
+            koreanQuestion: "왁자지껄 떠드는 소리 때문에 그가 하는 말을 듣기가 어려웠다.",
+            koreanOptions: ["소각로", "소음", "욕설", "극소량", "성실"],
+            answer: 2
+        },
+        {
+            number: "154",
+            question: "Her death was a ____ from a knife wound to the heart.",
+            options: ["homicide", "heyday", "kingpin", "humbug", "homophobia"],
+            koreanQuestion: "그녀의 죽음은 칼로 심장을 찌른 살해에 의한 것이었다.",
+            koreanOptions: ["대량학살", "전성기", "주요인물", "속임수", "호모혐오증"],
+            answer: 1
+        },
+        {
+            number: "155",
+            question: "The miners' strike caused a ____ in coal production.",
+            options: ["manslaughter", "maverick", "half-measure", "incursion", "hiatus"],
+            koreanQuestion: "광부들의 파업으로 인해 석탄 생산이 중단되었다.",
+            koreanOptions: ["살인", "이단자", "미봉책", "침입, 유입", "중단, 틈"],
+            answer: 5
+        },
+        {
+            number: "156",
+            question: "No, and it seems to be politically motivated rather than over ____ work issues.",
+            options: ["large", "lay", "longtime", "legion", "legitimate"],
+            koreanQuestion: "아니오, 이번 파업은 근로 조건에 대한 정당한 요구라기보다는 정치적으로 이용하는 것 같아요.",
+            koreanOptions: ["일반적인, 잡히지 않고 도주 중인", "평이한", "오랜", "무수한", "합법적인, 타당한"],
+            answer: 5
+        },
+        {
+            number: "157",
+            question: "It is hoped that the dispute will be settled without recourse to ____.",
+            options: ["leukemia", "litigation", "liquidity", "lot", "marshal"],
+            koreanQuestion: "그 논쟁이 소송에 기대지 않고 해결될 것으로 기대된다.",
+            koreanOptions: ["백혈병", "소송", "기업청산", "운명", "보안관"],
+            answer: 2
+        },
+        {
+            number: "158",
+            question: "A good comedy actor, who is very marketable, is maybe funny, attractive or ____.",
+            options: ["mandatory", "loquacious", "marginal", "latent", "legally binding"],
+            koreanQuestion: "상품 가치가 있는 좋은 코미디 배우는 웃기면서 매력적이거나 말이 많은 사람일 것이다.",
+            koreanOptions: ["의무의", "요란한", "한계의", "잠재한", "법적 구속력이 있는"],
+            answer: 2
+        },
+        {
+            number: "159",
+            question: "China, first and foremost, wants the EU to ____ its 15-year-old arms embargo.",
+            options: ["make for", "lift", "mince", "nominate", "nudge"],
+            koreanQuestion: "중국은 무엇보다 유럽이 15년간의 무기수출 금지조치를 해제하기를 바란다.",
+            koreanOptions: ["야기하다", "제거하다", "얇게 자르다", "임명하다", "가볍게 밀다"],
+            answer: 2
+        },
+        {
+            number: "160",
+            question: "Military and nuclear research have received the ____ of public funding.",
+            options: ["leverage", "lethargy", "lion's share", "logjam", "limelight"],
+            koreanQuestion: "군사 및 핵 분야의 연구가 가장 많은 공공 자금을 지원받아 왔다.",
+            koreanOptions: ["지렛대", "무기력증", "가장 좋은 (큰) 몫", "교착", "세인의 이목"],
+            answer: 3
+        },
+        {
+            number: "161",
+            question: "The streets were ____ with cars during rush hour.",
+            options: ["itched", "jettisoned", "jammed", "libeled", "lynched"],
+            koreanQuestion: "도로들은 출근 시간 중에 차들로 막혀 있었다.",
+            koreanOptions: ["열망하다", "버리다", "교란하다", "모욕하다", "린치를 가하다"],
+            answer: 3
+        },
+        {
+            number: "162",
+            question: "He had the ____ when he saw the ghost.",
+            options: ["leverages", "jitters", "loopholes", "maladies", "international waters"],
+            koreanQuestion: "그는 유령을 볼 때 안절부절 못했다.",
+            koreanOptions: ["권력", "초조함", "허점", "병", "공해"],
+            answer: 2
+        },
+        {
+            number: "163",
+            question: "He took some tens of millions of won in ____ from the manufacturers.",
+            options: ["junta", "kickback", "jolt", "leeway", "longitude"],
+            koreanQuestion: "그는 제조업체들로부터 수천만 원의 리베이트(뇌물)를 챙겼다.",
+            koreanOptions: ["군사 정부", "뇌물", "충격", "자유재량", "경도"],
+            answer: 2
+        },
+        {
+            number: "164",
+            question: "The scandal could ____ his chances of becoming the next president.",
+            options: ["jeopardize", "kindle", "juggle", "mortify", "jockey for"],
+            koreanQuestion: "그 스캔들은 그가 차기 사장으로 승진하는 것을 위태롭게 할 수도 있다",
+            koreanOptions: ["위태롭게하다", "조장하다", "절묘히 다루다", "굴욕감을 느끼게 하다, 극복하다", "차지하려고 하다"],
+            answer: 1
+        },
+        {
+            number: "165",
+            question: "Troops could be ferried in to ____ drug shipments.",
+            options: ["interfere", "landfill", "lash to lash out at", "interdict", "libel"],
+            koreanQuestion: "마약 수송을 차단하기 위해 군대가 투입될 수도 있다.",
+            koreanOptions: ["간섭하다", "매립하다", "비난하다", "금지하다", "중상하다"],
+            answer: 4
+        },
+        {
+            number: "166",
+            question: "Anyone can succeed if he carves out a ____.",
+            options: ["invective", "keel", "jurisdiction", "logjam", "niche market"],
+            koreanQuestion: "틈새시장을 개척한다면 누구든지 성공할 수 있다.",
+            koreanOptions: ["비난", "밑이 평평한 배", "사법권", "교착", "틈새시장"],
+            answer: 5
+        },
+        {
+            number: "167",
+            question: "Their treachery is also an ____ resistance to superior force.",
+            options: ["intrepid", "notorious", "intractable", "malleable", "open-ended"],
+            koreanQuestion: "그들의 배반행위도 그들보다 강한 영향력(권력)애대한, 용감한 저항이다.",
+            koreanOptions: ["용맹한", "악명 높은", "고집 센", "유순한", "제한이 없는"],
+            answer: 1
+        },
+        {
+            number: "168",
+            question: "While McCain was ____ his opponent was calm.",
+            options: ["ludicrous", "meager", "irascible", "intriguing", "lewd"],
+            koreanQuestion: "메케인이 화를 잘 내는 성격인데 반해, 그의 경쟁자는 차분한 성격이다.",
+            koreanOptions: ["익살맞은", "빈약한", "화를 잘 내는", "재미있는", "외설적인"],
+            answer: 3
+        },
+        {
+            number: "169",
+            question: "We asked to change our seats with some closer view to the river, but the restaurant manager was ____ and unhelpful.",
+            options: ["knotty", "intransigent", "intermittent", "lousy", "morbid"],
+            koreanQuestion: "우리는 좀 더 강의 풍경과 가까운 자리로 바꿔달라고 부탁했으나 레스토랑 매니저는 전혀 타협적이지 않고 도움이 되지 않았다.",
+            koreanOptions: ["해결이 곤란한", "고집스러운", "열의 없는", "비참한", "병적인"],
+            answer: 2
+        },
+        {
+            number: "170",
+            question: "Overwhelmed by the police ____ the suspect confessed.",
+            options: ["Jim Crow", "jihad", "itch", "line-item veto", "interrogation"],
+            koreanQuestion: "경찰의 끈질긴 추궁에 못 이겨 용의자는 범행 사실을 시인했다",
+            koreanOptions: ["흑인 인종 차별", "아랍인들의 성전", "열망", "부분 거부권", "질문"],
+            answer: 5
+        },
+        {
+            number: "171",
+            question: "He said that the press had been ____ homosexuals for years.",
+            options: ["underlie", "vanquish", "upbeat", "vilifying", "vaunted"],
+            koreanQuestion: "그는 언론이 여러 해 동안 동성애자들을 비방해 왔다고 말했다.",
+            koreanOptions: ["-의 기초가 되다", "-을 이기다, 정복하다", "경기 상승; 낙천적인, 낙관적인", "비방하다", "자랑거리인"],
+            answer: 4
+        },
+        {
+            number: "172",
+            question: "The court ordered that the government should ____ the fee for nonprofit organizations.",
+            options: ["vanquish", "vindicate", "undergird", "vie", "waive"],
+            koreanQuestion: "법원은 정부가 비영리 단체에게는 납부금을 면제해야 한다고 명령했다.",
+            koreanOptions: ["-을 이기다, 정복하다", "-의 정당함을 입증하다", "뒷받침하다", "얻으려고 다투다", "(법이나 규칙을 예외적으로) 적용하지 않다"],
+            answer: 5
+        },
+        {
+            number: "173",
+            question: "The robbers have been involved in ____ beating of innocent people and deliberate destruction of bank building.",
+            options: ["virile", "wanton", "unilateral", "virtual", "vaunted"],
+            koreanQuestion: "강도들은 제멋대로 무고한 사람을 때리고 고의적으로 은행 건물을 파괴한 혐의를 받고 있다.",
+            koreanOptions: ["남성다운", "조리가 서지 않는, 억제되지 않는", "일방적인", "사실상의, 가상의", "자랑거리인"],
+            answer: 2
+        },
+        {
+            number: "174",
+            question: "Strong immunosuppressive drugs are administered to ____ your immune system.",
+            options: ["upbraid", "yearn", "vacillate", "wipe out", "tantalize"],
+            koreanQuestion: "강한 면역억제제는 당신의 면역체계를 없애버리도록 한다.",
+            koreanOptions: ["비난하다, 꾸짖다", "갈망하다", "망설이다", "일소하다", "애타게 하다"],
+            answer: 4
+        },
+        {
+            number: "175",
+            question: "Share prices took a sharp ____ following news of the slump.",
+            options: ["tumble", "trumpet", "undercut", "vouch", "zoom"],
+            koreanQuestion: "그 불황 소식에 뒤이어 주가가 급격히 폭락했다.",
+            koreanOptions: ["폭락하다", "떠들썩하게 알리다", "경쟁자보다 싸게 팔다", "보증하다", "급상승하다"],
+            answer: 1
+        },
+        {
+            number: "176",
+            question: "He said he would ____ the investigation in order to reveal the truth.",
+            options: ["afflict", "accede to", "brag", "cease-fire", "decoy"],
+            koreanQuestion: "그는 진실을 밝히기 위해 조사에 응하겠다고 말했다.",
+            koreanOptions: ["괴롭히다", "가입하다", "자랑하다", "휴전하다", "유인하다"],
+            answer: 2
+        },
+        {
+            number: "177",
+            question: "He had conspired with an ____ to rob the bank.",
+            options: ["accomplice", "anarchy", "debris", "condolence", "bulwark"],
+            koreanQuestion: "그는 은행을 털려고 공범과 짰다",
+            koreanOptions: ["공범자", "무정부상태", "잔해", "문상", "성벽"],
+            answer: 1
+        },
+        {
+            number: "178",
+            question: "We tried to persuade her, but she was ____.",
+            options: ["anemic", "adamant", "baneful", "callow", "decrepit"],
+            koreanQuestion: "우리는 그녀를 설득하려 했지만 요지부동이었다.",
+            koreanOptions: ["힘없는", "단호한", "파괴적인", "미숙한", "노쇠한"],
+            answer: 2
+        },
+        {
+            number: "179",
+            question: "They pledged to ____ the terms of the agreement.",
+            options: ["addict", "beguile", "circumscribe", "adhere to", "decimate"],
+            koreanQuestion: "그들은 합의한 내용을 준수할 것을 확약했다",
+            koreanOptions: ["중독되다", "기만하다", "제한하다", "고수하다", "학살하다"],
+            answer: 4
+        },
+        {
+            number: "180",
+            question: "The gang that was distributing ____ gasoline has been rounded up.",
+            options: ["abominated", "clamped", "chastised", "adulterated", "deciphered"],
+            koreanQuestion: "가짜 휘발유를 유통해 온 일당이 검거되었다",
+            koreanOptions: ["혐오하다", "단속하다", "비난하다", "불순물을 섞다", "암호를 해석하다"],
+            answer: 4
+        },
+        {
+            number: "181",
+            question: "Since they have ignored our ____ our only recourse is to declare war.",
+            options: ["vigil", "turmoil", "truce", "ultimatum", "unrest"],
+            koreanQuestion: "그들이 우리의 최후통첩을 무시했기 때문에 우리가 할 수 있는 일은 선전 포고뿐이었다.",
+            koreanOptions: ["철야, 불침번", "소동, 혼란", "휴전", "최후통첩", "소란, 혼란"],
+            answer: 4
+        },
+        {
+            number: "182",
+            question: "The board of governors of a school weighed in with the proposal and it was carried by a ____ vote.",
+            options: ["untapped", "unanimous", "unassuming", "weary", "undercover"],
+            koreanQuestion: "학교의 이사회는 제안을 의기양양하게 내놓았으며, 그것은 만장일치로 통과되었다.",
+            koreanOptions: ["개발이 안 된, 이용되지 않는", "전원 일치의, 이의 없는", "겸손한, 주제넘지 않은", "싫증난", "비밀의"],
+            answer: 2
+        },
+        {
+            number: "183",
+            question: "Intercultural miscommunication and misattributions often ____ intercultural conflict.",
+            options: ["warrant", "whittle", "undo", "trounce", "underline"],
+            koreanQuestion: "문화간의 잘못된 의사소통과 상호간의 책임전가는 종종 문화간 갈등을 분명히 보여준다.",
+            koreanOptions: ["보증하다", "삭감하다", "원상태로 되돌리다", "깎아내리다, 엄하게 꾸짖다, 참패시키다", "강조하다"],
+            answer: 5
+        },
+        {
+            number: "184",
+            question: "Their major offensive is apparently designed to bury peace plans beneath the ____ and devastation on the ground.",
+            options: ["upheaval", "whimsy", "unison", "zest", "watershed"],
+            koreanQuestion: "그들의 대규모 공세의 의도는 지상에서의 격변과 참화 속에 평화 계획을 묻어버리려는 것이 분명하다.",
+            koreanOptions: ["대변동, 격동", "기행, 변덕", "조화, 제창", "풍미, 열정", "분수령"],
+            answer: 1
+        },
+        {
+            number: "185",
+            question: "The constant ____ in the office proved that she was an inept administrator.",
+            options: ["windfall", "valor", "zeal", "turmoil", "truce"],
+            koreanQuestion: "사무실에서 발생한 계속적인 소란은 그녀 무능한 관리자였음을 나타내 보였다.",
+            koreanOptions: ["뜻밖의 횡재", "용맹", "열의", "소동, 혼란", "휴전"],
+            answer: 4
+        },
+        {
+            number: "186",
+            question: "The company is proud to be in the ____ of scientific progress.",
+            options: ["underling", "tumor", "vanguard", "transition", "toll"],
+            koreanQuestion: "우리 회사는 과학 발전의 선봉에 서 있는 것을 자랑스러워한다.",
+            koreanOptions: ["아랫사람, 부하", "종양", "선봉, 선구자", "과도기, 전환", "사용세, 사상자수"],
+            answer: 3
+        },
+        {
+            number: "187",
+            question: "They are accused of being involved in ____ practices.",
+            options: ["tooth and nail", "venal", "unbiased", "veracious", "unilateral"],
+            koreanQuestion: "그들은 뇌물을 받고 매수되는 관행에 연루된 혐의로 기소된 상태이다.",
+            koreanOptions: ["필사적으로", "돈에 좌우되는, 매수하기 쉬운", "편견이 없는", "진실한", "일방적인"],
+            answer: 2
+        },
+        {
+            number: "188",
+            question: "Employers also say they dislike ____ letters, like a three-page page letter letter talking about the applicant's philosophy of education.",
+            options: ["verbose", "upcoming", "unyielding", "virile", "wily"],
+            koreanQuestion: "고용주들은 세 페이지짜리 지원자 교육 철학에 대한 것과 같은 장황한 편지를 싫어한다고 말한다.",
+            koreanOptions: ["말이 많은, 장황한", "다가오는", "완고한, 단호한", "남성다운", "교활한"],
+            answer: 1
+        },
+        {
+            number: "189",
+            question: "There's a certain ____ pleasure in reading books about travel.",
+            options: ["wary", "vicarious", "watertight", "vituperative", "wrenching"],
+            koreanQuestion: "여행에 관한 책을 읽으면 어떤 대리적 즐거움을 맛보게 된다.",
+            koreanOptions: ["경계하는, 신중한", "(감정 등이) 대리의", "빈틈없는", "욕하는", "정신적으로 괴로운"],
+            answer: 2
+        },
+        {
+            number: "190",
+            question: "No parent can ever be ____ enough to prevent a small child from taking many a painful tumble.",
+            options: ["warlike", "wrongful", "vehement", "vigilant", "vindictive"],
+            koreanQuestion: "작은 어린이가 여러 번 고통스럽게 넘어지는 것을 막을 수 있을 만큼 충분한 경계를 하는 부모는 없다.",
+            koreanOptions: ["호전적인", "부정한, 불법적인", "격렬한, 열광적인", "경계를 게을리 하지 않는", "원한을 품은"],
+            answer: 4
+        },
+        {
+            number: "191",
+            question: "North Korea continues to ____ the nuclear inspection appeals.",
+            options: ["scoff", "rebuff", "reap", "reconcile", "rivet"],
+            koreanQuestion: "북한은 핵사찰을 하라는 요청을 계속 거절하고 있다.",
+            koreanOptions: ["비웃다", "거절하다", "획득하다", "조화시키다", "고정시키다"],
+            answer: 2
+        },
+        {
+            number: "192",
+            question: "The army was called in to ____ the rebels.",
+            options: ["trumpet", "shove", "suppress", "upbraid", "reckless"],
+            koreanQuestion: "매달 우리는 수표장을 은행 기록에 맞추어 조정한다.",
+            koreanOptions: ["떠들썩하게 알리다", "난폭하게 밀다", "진압하다", "비난하다", "무분별한"],
+            answer: 3
+        },
+        {
+            number: "193",
+            question: "It was ____ of them not to inform us of these changes sooner.",
+            options: ["shrewd", "reckless", "seasoned", "remiss", "rowdy"],
+            koreanQuestion: "그들이 이들 변동 사항에 대해 우리에게 더 일찍 알려주지 않은 것은 태만한 처사였다.",
+            koreanOptions: ["현명한", "무분별한", "경험이 많은", "태만한", "떠들썩한"],
+            answer: 4
+        },
+        {
+            number: "194",
+            question: "The idea of cheating in an exam is morally ____ to me.",
+            options: ["unflinching", "transient", "rife", "scathing", "repugnant"],
+            koreanQuestion: "시험에서 부정행위를 한다는 생각은 내게 도덕적으로 혐오스럽다.",
+            koreanOptions: ["단호한", "일시적인", "만연한", "신랄한", "불쾌한"],
+            answer: 5
+        },
+        {
+            number: "195",
+            question: "The classroom became ____ the moment recess began.",
+            options: ["viable", "rowdy", "wrongful", "venal", "wont"],
+            koreanQuestion: "쉬는 시간이 되자 교실은 왁자지껄해졌다",
+            koreanOptions: ["생존 능력이 있는", "떠들썩한", "부정한", "돈에 좌우되는", "흔히 ~하는 경향이 있는"],
+            answer: 2
+        },
+        {
+            number: "196",
+            question: "We couldn't help but be disappointed at his ____ and shameless behavior.",
+            options: ["downright", "contrite", "budding", "brazen", "erratic"],
+            koreanQuestion: "우리는 그의 후안무치한 행동에 실망을 금할 수 없었다.",
+            koreanOptions: ["노골적인", "뉘우치는", "싹트는", "뻔뻔한", "산만한"],
+            answer: 4
+        },
+        {
+            number: "197",
+            question: "It's hard to get permission because of all the ____ involved.",
+            options: ["catapult", "desperado", "euthanasia", "bureaucracy", "flak"],
+            koreanQuestion: "관련 부처의 번잡한 절차 때문에 허가를 얻기가 쉽지 않습니다.",
+            koreanOptions: ["투석기", "무법자", "안락사", "관료주의", "혹평"],
+            answer: 4
+        },
+        {
+            number: "198",
+            question: "The department store was ____ with shoppers during the sale.",
+            options: ["bogus", "candid", "bustling", "dejected", "equivocal"],
+            koreanQuestion: "백화점은 세일 기간 동안 쇼핑객들로 북적거렸다",
+            koreanOptions: ["가짜의", "솔직한", "부산스러운", "낙심한", "확실하지 않은"],
+            answer: 3
+        },
+        {
+            number: "199",
+            question: "What began as a little ____ ended in a fight.",
+            options: ["beg", "bickering", "champion", "debrief", "elate"],
+            koreanQuestion: "사소한 말다툼이 싸움으로 번졌다",
+            koreanOptions: ["구원하다", "말다툼하다", "지지하다", "보고하다", "고무하다"],
+            answer: 2
+        },
+        {
+            number: "200",
+            question: "He is a 20-year-old man who behaves like a 12-year-old boy.",
+            options: ["blue-ribbon", "conciliatory", "down-to-earth", "callow", "eligible"],
+            koreanQuestion: "그는 행동하는 게 12살짜리 아이 같은 철없는 20살 청년이다.",
+            koreanOptions: ["최우수의", "회유적인", "현실적인", "미숙한", "적격의"],
+            answer: 4
+        }
+    ];
+
+    const questionsPerPage = 10;
+    let currentQuizIndex = 0;
+    let userAnswers = {};
+
+    const quizContainer = document.getElementById('quiz-container');
+
+    let db;
+    const dbName = 'vocaQuizDB';
+    const storeName = 'quizState';
+    const version = 1;
+
+    const initDbAndLoadState = () => {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(dbName, version);
+            
+            request.onerror = event => {
+                console.error("IndexedDB error:", event.target.error);
+                reject("IndexedDB error occurred.");
+            };
+
+            request.onupgradeneeded = event => {
+                db = event.target.result;
+                if (!db.objectStoreNames.contains(storeName)) {
+                    db.createObjectStore(storeName, { keyPath: 'id' });
+                }
+            };
+
+            request.onsuccess = event => {
+                db = event.target.result;
+                loadState().then(resolve).catch(reject);
+            };
+        });
+    };
+
+    const loadState = () => {
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([storeName], 'readonly');
+            const objectStore = transaction.objectStore(storeName);
+            const request = objectStore.get(1);
+
+            request.onsuccess = event => {
+                const savedState = event.target.result;
+                if (savedState) {
+                    currentQuizIndex = savedState.quizIndex;
+                    userAnswers = savedState.answers;
+                } else {
+                    currentQuizIndex = 0;
+                    userAnswers = {};
+                }
+                resolve();
+            };
+            request.onerror = event => {
+                reject("Failed to load state from IndexedDB.");
+            };
+        });
+    };
+
+    const saveState = () => {
+        try {
+            const transaction = db.transaction([storeName], 'readwrite');
+            const objectStore = transaction.objectStore(storeName);
+            const state = {
+                id: 1,
+                quizIndex: currentQuizIndex,
+                answers: userAnswers
+            };
+            objectStore.put(state);
+        } catch (e) {
+            console.error('Failed to save state to IndexedDB:', e);
+        }
+    };
+    
+    const renderQuizPage = (startIndex, answers) => {
+        currentQuizIndex = startIndex;
+        userAnswers = answers;
+        
+        quizContainer.innerHTML = '';
+        const questionsToRender = quizData.slice(currentQuizIndex, currentQuizIndex + questionsPerPage);
+
+        if (questionsToRender.length === 0) {
+            quizContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-8 text-center text-gray-500">
+                    <p class="text-xl mb-4">모든 문제를 다 풀었습니다!</p>
+                    <p>수고하셨습니다.</p>
+                </div>
+            `;
+            return;
+        }
+
+        questionsToRender.forEach((question, localIndex) => {
+            const globalIndex = currentQuizIndex + localIndex;
+            const questionElement = document.createElement('div');
+            questionElement.className = 'mb-6';
+            const userAnswer = userAnswers[globalIndex];
+            questionElement.innerHTML = `
+                <div class="flex items-start mb-4">
+                    <span class="text-lg font-bold text-gray-800 mr-2">${question.number}.</span>
+                    <div class="question-box w-full">
+                        <p class="question-text text-base font-medium text-gray-700">${question.question.replace(/_{2,}/g, '____')}</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    ${question.options.map((option, optIndex) => `
+                        <button type="button" class="option-button w-full text-left p-3 border-2 rounded-lg bg-gray-50 border-gray-200 focus:outline-none ${userAnswers[globalIndex] === optIndex ? 'selected' : ''}"
+                            data-question-index="${globalIndex}"
+                            data-option-index="${optIndex}">
+                            (${String.fromCharCode(97 + optIndex)}) ${option}
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+            quizContainer.appendChild(questionElement);
+        });
+
+        const submitButton = document.createElement('button');
+        submitButton.id = 'submit-btn';
+        submitButton.className = 'mt-8 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-transform duration-200 transform hover:scale-105 focus:outline-none';
+        submitButton.textContent = '제출';
+        quizContainer.appendChild(submitButton);
+
+        const totalPages = Math.ceil(quizData.length / questionsPerPage);
+        const paginationContainer = document.createElement('div');
+        paginationContainer.className = 'pagination mt-6';
+        paginationContainer.innerHTML = `
+            <span class="text-lg font-bold">페이지: </span>
+            <input type="number" id="page-input" class="rounded-lg border-2 border-gray-300 p-1 text-sm focus:outline-none focus:border-blue-500" min="1" max="${totalPages}" value="${Math.floor(currentQuizIndex / questionsPerPage) + 1}">
+            <span class="text-lg font-bold"> / ${totalPages}</span>
+        `;
+        quizContainer.appendChild(paginationContainer);
+
+        attachEventListeners();
+
+        const answeredCount = Object.keys(userAnswers).filter(key => parseInt(key) >= currentQuizIndex && parseInt(key) < currentQuizIndex + questionsPerPage && userAnswers[key] !== undefined).length;
+        const totalQuestions = questionsToRender.length;
+        submitButton.disabled = answeredCount !== totalQuestions;
+    };
+
+    const attachEventListeners = () => {
+        const optionButtons = document.querySelectorAll('.option-button');
+        optionButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const questionIndex = parseInt(button.dataset.questionIndex);
+                const optionIndex = parseInt(button.dataset.optionIndex);
+                
+                const prevSelected = document.querySelectorAll(`button[data-question-index="${questionIndex}"].selected`);
+                prevSelected.forEach(btn => btn.classList.remove('selected', 'border-blue-500', 'bg-blue-100'));
+
+                button.classList.add('selected', 'border-blue-500', 'bg-blue-100');
+                userAnswers[questionIndex] = optionIndex;
+                
+                saveState();
+
+                const answeredCount = Object.keys(userAnswers).filter(key => parseInt(key) >= currentQuizIndex && parseInt(key) < currentQuizIndex + questionsPerPage && userAnswers[key] !== undefined).length;
+                const totalQuestions = quizData.slice(currentQuizIndex, currentQuizIndex + questionsPerPage).length;
+                document.getElementById('submit-btn').disabled = answeredCount !== totalQuestions;
+            });
+        });
+
+        document.getElementById('submit-btn').addEventListener('click', showResults);
+        
+        const pageInput = document.getElementById('page-input');
+        pageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const pageNumber = parseInt(e.target.value);
+                const totalPages = Math.ceil(quizData.length / questionsPerPage);
+                if (pageNumber >= 1 && pageNumber <= totalPages) {
+                    currentQuizIndex = (pageNumber - 1) * questionsPerPage;
+                    saveState();
+                    renderQuizPage(currentQuizIndex, userAnswers);
+                } else {
+                    e.target.value = Math.floor(currentQuizIndex / questionsPerPage) + 1; // 유효하지 않은 값 입력 시 현재 페이지로 되돌리기
+                }
+            }
+        });
+    };
+
+    const showResults = () => {
+        quizContainer.innerHTML = '';
+        
+        const resultsSection = document.createElement('div');
+        resultsSection.className = 'results-section';
+        
+        const resultsTitle = document.createElement('h2');
+        resultsTitle.className = 'text-2xl font-bold text-center mb-6 text-gray-800';
+        resultsTitle.textContent = '결과';
+        resultsSection.appendChild(resultsTitle);
+
+        let correctCount = 0;
+        const questionsAnswered = quizData.slice(currentQuizIndex, currentQuizIndex + questionsPerPage);
+
+        questionsAnswered.forEach((question, localIndex) => {
+            const globalIndex = currentQuizIndex + localIndex;
+            const userAnswer = userAnswers[globalIndex];
+            const isCorrect = (userAnswer + 1) === question.answer;
+
+            if (isCorrect) {
+                correctCount++;
+            }
+
+            const resultElement = document.createElement('div');
+            resultElement.className = 'mb-6 p-4 rounded-lg ' + (isCorrect ? 'bg-green-50' : 'bg-red-50');
+            resultElement.innerHTML = `
+                <div class="flex items-start mb-2">
+                    <span class="text-lg font-bold text-gray-800 mr-2">${question.number}.</span>
+                    <div class="w-full">
+                        <p class="question-text font-medium text-gray-700 mb-2">${question.question.replace(/_{2,}/g, '____')}</p>
+                        <p class="text-sm text-gray-600">${question.koreanQuestion}</p>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <p class="text-base font-semibold text-gray-700 mb-2">정답: <span class="${isCorrect ? 'text-green-600' : 'text-red-600'}">(${String.fromCharCode(97 + question.answer - 1)}) ${question.options[question.answer - 1]}</span></p>
+                    <div class="text-sm text-gray-600 space-y-1">
+                        ${question.options.map((option, optIndex) => `
+                            <p>(${String.fromCharCode(97 + optIndex)}) ${option} - ${question.koreanOptions[optIndex]}</p>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            resultsSection.appendChild(resultElement);
+        });
+
+        const scoreElement = document.createElement('div');
+        scoreElement.className = 'text-2xl font-bold text-center mt-8 ' + (correctCount === questionsPerPage ? 'text-green-600' : 'text-blue-500');
+        scoreElement.textContent = `당신의 점수: ${correctCount}/${questionsPerPage}점`;
+        resultsSection.appendChild(scoreElement);
+        
+        if (currentQuizIndex + questionsPerPage < quizData.length) {
+            const nextButton = document.createElement('button');
+            nextButton.className = 'mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-transform duration-200 transform hover:scale-105 focus:outline-none';
+            nextButton.textContent = '다음 10문제 풀기';
+            nextButton.addEventListener('click', () => {
+                currentQuizIndex += questionsPerPage;
+                saveState();
+                renderQuizPage(currentQuizIndex, userAnswers);
+            });
+            resultsSection.appendChild(nextButton);
+        } else {
+            const finishMessage = document.createElement('p');
+            finishMessage.className = 'mt-4 text-center text-lg font-semibold text-gray-600';
+            finishMessage.textContent = '모든 문제를 다 풀었습니다. 수고하셨습니다!';
+            resultsSection.appendChild(finishMessage);
+        }
+
+        quizContainer.appendChild(resultsSection);
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            quizContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-8 text-center text-gray-500">
+                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-dashed border-blue-500 mb-4"></div>
+                    <p>데이터 불러오는 중...</p>
+                </div>
+            `;
+            await initDbAndLoadState();
+            renderQuizPage(currentQuizIndex, userAnswers);
+        } catch (e) {
+            quizContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-8 text-center text-red-500">
+                    <p class="text-xl mb-4">데이터 로딩에 실패했습니다.</p>
+                    <p>오류: ${e}</p>
+                </div>
+            `;
+        }
+    });
+
+</script>
+
+</body>
+</html>
