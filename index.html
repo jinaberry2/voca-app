@@ -182,17 +182,25 @@
             button.addEventListener('click', () => {
                 const selectedLevel = button.dataset.level;
                 if (selectedMode === 'flashcard') {
-                    // V201로 이동
-                    if (selectedLevel === '201') {
+                    if (selectedLevel === '101') {
+                        window.location.href = `word_list_v101.html`;
+                    } else if (selectedLevel === '201') {
                         window.location.href = `word_list_v201.html`;
-                    } else {
+                    } else if (selectedLevel === '301') {
+                        window.location.href = `word_list_v301.html`;
+                    }
+                    else {
                         alert(`V${selectedLevel} 단어장 파일은 아직 준비되지 않았습니다.`);
                     }
                 } else if (selectedMode === 'quiz') {
-                    // V201로 이동
-                    if (selectedLevel === '201') {
+                    if (selectedLevel === '101') {
+                         window.location.href = `word_quiz_v101.html`;
+                    } else if (selectedLevel === '201') {
                         window.location.href = `word_quiz_v201.html`;
-                    } else {
+                    } else if (selectedLevel === '301') {
+                        window.location.href = `word_quiz_v301.html`;
+                    }
+                    else {
                         alert(`V${selectedLevel} 단어 시험 파일은 아직 준비되지 않았습니다.`);
                     }
                 }
