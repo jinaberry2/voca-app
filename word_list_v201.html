@@ -2584,6 +2584,14 @@ function startNewSession(wordsToStudy, isReview = false) {
     menuBtn.addEventListener('click', openMenu);
     closeMenuBtn.addEventListener('click', closeMenu);
 
+
+        // 추가할 코드: 페이지를 벗어나기 전에 데이터 저장
+window.addEventListener('beforeunload', () => {
+    localStorage.setItem('chapterStatuses', JSON.stringify(chapterStatuses));
+    localStorage.setItem('lastChapter', currentChapter);
+    localStorage.setItem(`lastIndex_${currentChapter}`, currentCardIndex);
+});
+
     // Initial load: 앱 시작 시 마지막으로 학습했던 챕터 또는 챕터 1 로드
     const lastChapter = parseInt(localStorage.getItem('lastChapter')) || 1;
     startNewSession(lastChapter);
