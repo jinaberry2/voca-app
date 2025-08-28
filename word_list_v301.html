@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 유의어 그룹핑 앱</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* 기본 폰트 설정 */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* 모달 오버레이 스타일 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        /* 모달 콘텐츠 스타일 */
+        .modal-content {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 1.5rem;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80%;
+            overflow-y: auto;
+            position: relative;
+        }
+        /* 로딩 스피너 스타일 */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s linear infinite;
+        }
+        /* 스피너 애니메이션 키프레임 */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* 단어 버튼 스타일 */
+        .word-button {
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            transform: scale(1);
+        }
+        /* 버튼 클릭 시 미묘한 효과 */
+        .word-button:active {
+            transform: scale(0.98);
+        }
+        /* 선택된 단어 버튼 스타일 */
+        .word-button.selected {
+            background-color: #4B5563; /* slate-600 */
+            color: #fff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transform: scale(1.03);
+        }
+        /* 정답 단어 버튼 스타일 */
+        .word-button.correct {
+            background-color: #10B981; /* green-500 */
+            color: white;
+            cursor: default;
+            animation: bounceIn 0.5s ease-out;
+        }
+        /* 오답 단어 버튼 스타일 */
+        .word-button.incorrect {
+            background-color: #EF4444; /* red-500 */
+            color: white;
+            cursor: default;
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        /* 선택되지 않은 정답 단어 스타일 */
+        .word-button.missed-correct {
+            background-color: #9CA3AF; /* gray-400, 기존 D1D5DB보다 진한 색 */
+            color: #1F2937; /* gray-800, 텍스트 색상을 더 진하게 변경 */
+        }
+        /* 정답 애니메이션 */
+        @keyframes bounceIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        /* 오답 애니메이션 */
+        @keyframes shake {
+            10%, 90% { transform: translateX(-1px); }
+            20%, 80% { transform: translateX(2px); }
+            30%, 50%, 70% { transform: translateX(-4px); }
+            40%, 60% { transform: translateX(4px); }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-lg mx-auto">
+        <!-- 앱 제목, 메뉴 버튼, 홈 버튼 -->
+        <div class="flex justify-between items-center mb-6">
+            <button id="menu-btn" class="p-2 bg-slate-200 rounded-md text-sm font-semibold hover:bg-slate-300 transition">
+                메뉴
+            </button>
+            <h1 id="app-title" class="text-3xl font-bold text-center text-slate-800 flex-grow">AI 유의어 그룹핑 앱</h1>
+            <a href="index.html" class="p-2 bg-slate-200 rounded-md text-sm font-semibold hover:bg-slate-300 transition">
+                홈으로
+            </a>
+        </div>
+        <p id="learning-title" class="text-center text-slate-600 mb-6">챕터와 카테고리를 선택하세요.</p>
+
+        <!-- 메인 컨테이너 -->
+        <div id="main-container">
+            <!-- 유의어 그룹핑 뷰 -->
+            <div id="synonym-group-view" class="hidden w-full h-auto bg-white rounded-2xl shadow-lg p-6">
+                <div id="progress-indicator" class="text-center text-slate-500 mb-2 font-bold text-lg"></div>
+                <div class="text-center">
+                    <h2 id="korean-definition" class="text-2xl font-bold text-slate-800 mb-6"></h2>
+                </div>
+                <div id="word-buttons-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <!-- 단어 버튼이 여기에 동적으로 생성됩니다. -->
+                </div>
+                <div id="quiz-controls" class="flex flex-col mt-6 space-y-3">
+                    <button id="check-answer-btn" class="py-3 px-6 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition">정답 확인</button>
+                    <div class="flex justify-between items-center gap-3">
+                        <button id="prev-btn" class="w-1/2 py-3 bg-slate-200 text-slate-700 font-semibold rounded-lg shadow-md hover:bg-slate-300 transition">이전</button>
+                        <button id="next-btn" class="w-1/2 py-3 bg-slate-200 text-slate-700 font-semibold rounded-lg shadow-md hover:bg-slate-300 transition">다음</button>
+                    </div>
+                </div>
+                <div id="feedback-message" class="text-center font-bold mt-4"></div>
+                <div id="ai-features" class="mt-6 p-4 border-t-2 border-slate-200 flex justify-center">
+                    <button id="generate-example-btn" class="px-5 py-2 bg-purple-500 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-purple-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        선택한 단어 예문 보기
+                    </button>
+                </div>
+            </div>
+            <!-- AI 퀴즈 뷰 -->
+            <div id="quiz-view" class="hidden w-full h-auto bg-white rounded-2xl shadow-lg p-6"></div>
+            <!-- 완료 뷰 -->
+            <div id="completion-view" class="hidden w-full h-64 bg-white rounded-2xl shadow-lg p-8 text-center flex flex-col justify-center items-center">
+            </div>
+        </div>
+    </div>
+
+    <!-- 챕터 선택 메뉴 모달 -->
+    <div id="chapter-menu-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold text-center mb-6">챕터 선택</h2>
+            <div id="chapter-list-container" class="space-y-4">
+                <button id="chapter-1-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 01</button>
+                <button id="chapter-2-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 02</button>
+                <button id="chapter-3-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 03</button>
+                <button id="chapter-4-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 04</button>
+                <button id="chapter-5-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 05</button>
+                <button id="chapter-6-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 06</button>
+                <button id="chapter-7-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 07</button>
+                <button id="chapter-8-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 08</button>
+                <button id="chapter-9-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 09</button>
+                <button id="chapter-10-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 10</button>
+                <button id="chapter-11-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 11</button>
+                <button id="chapter-12-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 12</button>
+                <button id="chapter-13-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 13</button>
+                <button id="chapter-14-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 14</button>
+                <button id="chapter-15-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 15</button>
+                <button id="chapter-16-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 16</button>
+                <button id="chapter-17-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 17</button>
+                <button id="chapter-18-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 18</button>
+                <button id="chapter-19-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 19</button>
+                <button id="chapter-20-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 20</button>
+                <button id="chapter-21-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 21</button>
+                <button id="chapter-22-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 22</button>
+                <button id="chapter-23-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 23</button>
+                <button id="chapter-24-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 24</button>
+                <button id="chapter-25-btn" class="w-full p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition">CHAPTER 25</button>
+            </div>
+            <button id="close-menu-btn" class="absolute top-4 right-4 text-xl font-bold text-slate-500 hover:text-slate-700">&times;</button>
+        </div>
+    </div>
+
+    <!-- 카테고리 선택 모달 -->
+    <div id="category-menu-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold text-center mb-6" id="category-modal-title"></h2>
+            <div id="category-list" class="grid grid-cols-2 gap-3">
+            </div>
+            <button id="close-category-menu-btn" class="absolute top-4 right-4 text-xl font-bold text-slate-500 hover:text-slate-700">&times;</button>
+        </div>
+    </div>
+    
+    <!-- AI 예문 모달 -->
+    <div id="ai-example-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold text-center mb-6" id="example-modal-title"></h2>
+            <div id="ai-example-content" class="text-slate-800">
+                <!-- AI가 생성한 예문이 여기에 표시됩니다. -->
+            </div>
+            <button id="close-example-modal-btn" class="absolute top-4 right-4 text-xl font-bold text-slate-500 hover:text-slate-700">&times;</button>
+        </div>
+    </div>
+
+    <script>
+        // PDF 자료를 바탕으로 재구성한 단어 데이터
+        const allChapterData = {
+"CHAPTER 01": {
+    "01. 유쾌/불쾌": {
+        "매혹시키다": ["attract", "captivate", "enthrall", "fascinate", "infatuate", "ravish", "rivet"],
+        "불쾌하게 만들다": ["disaffect", "disgust", "nauseate", "repel", "repulse"],
+        "불쾌감을 주는": ["disgusting", "nauseous", "noisome", "obnoxious", "repulsive", "invidious"],
+        "불쾌감, 반감, 혐오": ["antipathy", "nausea", "repulsion", "revulsion", "aversion"],
+        "(뻔뻔해서) 불쾌한": ["obtrusive", "protrusive", "blatant"],
+        "향기로운": ["aromatic", "balmy", "scented", "fragrant", "redolent"],
+        "악취의": ["stenchful", "fetid", "reeky", "effluvial", "putrid", "rancid"],
+        "화음이 좋은": ["euphonious", "consonant", "concordant"],
+        "불협화음의": ["cacophonous", "dissonant", "discordant", "strident", "raspy", "grating"],
+        "달콤한": ["mellifluous", "dulcet"]
+    },
+    "02. 추구/회피": {
+        "추구하다": ["seek", "pursue"],
+        "유혹하다, 구애하다": ["allure", "court", "entice", "lure", "woo", "ensnare", "seduce", "inveigle", "cajole", "coax", "wheedle"],
+        "당당히 맞서다": ["confront", "affront", "encounter"],
+        "회피하다": ["avoid", "eschew", "shun", "evade", "elude", "shirk", "parry"],
+        "방향을 바꾸어 피하다": ["dodge", "avert", "sidestep", "swerve"],
+        "꾀병을 부려 피하다": ["malinger", "goldbrick"]
+    },
+    "03. 칭찬/비난": {
+        "칭찬하다": ["accolade", "compliment", "laud", "approbate", "esteem", "eulogize", "tribute", "encomium", "estimable", "panegyrize"],
+        "비난하다": ["condemn", "denounce", "disapprove", "reprove", "reprobate", "reproach", "reprehend", "reprimand", "impugn", "oppugn", "admonish", "rant"],
+        "비판론자": ["critic", "faultfinder", "detractor"],
+        "격찬하다": ["extol", "exalt", "laud", "tout", "aggrandize"],
+        "혹평하다": ["chastise", "excoriate", "lambaste", "pan", "grill", "flay", "flail"],
+        "사소한 점을 두고 비난하다": ["carp", "cavil", "nitpick", "quibble"],
+        "지지하다": ["support", "espouse", "advocate"],
+        "지지론자": ["defender", "vindicator", "advocator", "champion", "countenancer", "espouser"]
+    },
+    "04. 아첨/비방": {
+        "아첨하다": ["flatter", "fawn", "adulate", "curry favor", "blandish", "ingratiate"],
+        "중상모략하다, 비방하다": ["calumniate", "asperse", "malign", "vilify", "slander", "libel"],
+        "욕설": ["obloquy", "opprobrium", "invective", "diatribe", "billingsgate"],
+        "욕설하다": ["vituperate", "traduce", "vilify", "revile"],
+        "숭배하다, 열애(熱愛)하다, 동경하다": ["worship", "adore", "idolize", "dote", "lionize"],
+        "회유하다": ["appease", "placate", "conciliate", "propitiate"],
+        "혐오하다": ["abhor", "abominate", "detest", "loathe", "execrate"],
+        "적대감": ["antipathy", "antagonism", "animosity", "hostility", "enmity"],
+        "회유할 수 없는": ["implacable", "inexorable", "unrelenting", "relentless"]
+    }
+},
+"CHAPTER 02": {
+    "05. 입증/반증": {
+        "사실임을 입증하다": ["prove", "confirm", "corroborate", "authenticate", "validate", "verify", "ratify"],
+        "정당화하다": ["vindicate", "justify", "warrant"],
+        "거짓임을 입증하다": ["controvert", "confute", "disprove", "disconfirm", "dispute", "rebut", "refute"],
+        "사실임을 주장하다": ["affirm", "allege", "assert", "aver", "avow", "claim", "contend"]
+    },
+    "06. 승인/거부": {
+        "승인하다": ["sanction", "endorse", "approve", "approbate", "authorize", "validate", "ratify", "countenance"],
+        "반대하다": ["object", "demur", "dissent", "except", "veto", "disapprove", "disapprobate"],
+        "동의하다": ["agree", "consent", "assent", "accept", "concur"],
+        "금지하다": ["proscribe", "inhibit", "enjoin", "interdict"],
+        "퇴짜 놓다": ["rebuff", "snub", "spurn", "repel", "repulse", "snort"]
+    },
+    "07. 존경/경멸": {
+        "크게 존경하다": ["revere", "defer", "venerate", "awe"],
+        "경멸하다": ["contemn", "despise", "disdain", "disparage", "slight", "profane", "blaspheme"],
+        "경외감을 주는": ["awe", "awesome", "redoubtable", "prodigious"],
+        "경멸할 만한": ["despicable", "contemptible", "opprobrious", "scurvy"],
+        "경멸하는": ["scornful", "disdainful", "contemptuous"],
+        "조롱하다": ["deride", "fleer", "flout", "mock", "scoff", "taunt", "jibe", "gibe", "quip", "jeer"],
+        "풍자": ["parody", "satire", "burlesque", "lampoon", "travesty"],
+        "불명예스러운, 수치스러운": ["ignoble", "opprobrious", "ignominious"],
+        "모욕": ["disgrace", "stigma", "indignity", "affront", "ignominious"]
+    }
+},
+"CHAPTER 03": {
+    "08. 진실/허위": {
+        "진실의": ["authentic", "valid", "verifiable", "veritable", "canonical", "orthodox", "infallible", "flawless", "faultless", "genuine"],
+        "오류의; 거짓의": ["bogus", "fallacious", "specious", "spurious", "apocryphal", "heterodox", "errant", "erroneous", "factitious", "fictitious"],
+        "그럴듯한": ["believable", "plausible", "convincing", "cogent", "verisimilar"],
+        "그럴듯하지 않은": ["unbelievable", "implausible", "inconvincible", "unconvincing"]
+    },
+    "09. 정직/속임수": {
+        "정직, 성실": ["integrity", "rectitude", "truthfulness", "faithfulness", "honesty", "uprightness", "probity", "veracity"],
+        "속임수, 핑계": ["artifice", "chicanery", "finesse", "fraud", "guile", "gambit", "gimmick", "stratagem", "subterfuge", "trick", "wile", "machination", "skulduggery"],
+        "속임수를 쓰지 않는": ["artless", "guileless", "naive", "naif", "ingenuous"],
+        "속임수를 쓰는": ["artful", "cunning", "guileful", "fraudulent", "mendacious", "wily", "disingenuous"]
+    },
+    "10. 속이다/바로잡다": {
+        "속이다": ["beguile", "bluff", "defraud", "dupe", "gull", "outwit", "wile", "bilk", "chisel", "cozen", "hoodwink"],
+        "핑계를 대다": ["equivocate", "prevaricate", "quibble"],
+        "감언이설로 속이다": ["cajole", "coax", "wheedle", "inveigle"],
+        "잘못을 바로잡다": ["disabuse", "disillusion", "disenchant"]
+    },
+    "11. 확신/의심": {
+        "확신하는": ["convinced", "assured", "reassured", "certain"],
+        "의심하는": ["dubious", "doubtful", "suspicious"],
+        "의심이 심한": ["skeptical", "sceptical", "paranoid"],
+        "잘 속는": ["gullible", "credulous", "dupable"],
+        "의심이 없는": ["undoubted", "indubitable"],
+        "의심할 만한": ["doubtable"]
+    },
+    "12. 충성/배신": {
+        "충성": ["fidelity", "fealty", "loyalty", "troth"],
+        "배신": ["treachery", "disloyalty", "infidelity", "perfidy"]
+    },
+    "13. 폭로/비밀": {
+        "폭로하다": ["bare", "betray", "blunder", "debunk", "disclose", "divulge", "reveal", "bolt", "bruit", "blab", "bespeak", "blurt", "snitch", "squeal", "tattle"],
+        "파내다, 폭로하다": ["dig (up)", "exhume", "unbury", "unearth", "disinter"],
+        "(땅에 묻어) 감추다": ["bury", "earth", "inhume", "inter"],
+        "(증거나 예를 들어) 폭로하다": ["evince", "exemplify", "demonstrate", "adduce"],
+        "선언하다, 공포하다": ["propagate", "proclaim", "disseminate", "promulgate"],
+        "통보하다": ["apprise", "inform", "notify", "acquaint"],
+        "감추다": ["conceal", "hide", "obscure", "occult", "secrete", "sequester", "snug", "eclipse", "ensconce"]
+    },
+    "14. 이해/난해": {
+        "붙잡다; 이해하다": ["grasp", "comprehend", "seize", "catch", "fathom", "apprehend"],
+        "깊이를 재다; 이해하다": ["fathom", "plumb"],
+        "(총명해서) 이해력이 있는": ["comprehensive", "understanding", "intelligible", "prehensible", "apprehensive"],
+        "(명료해서) 이해할 수 있는": ["apprehensible", "comprehensible", "understandable", "fathomable"],
+        "난해한": ["abstruse", "recondite", "inscrutable", "esoteric", "occult", "arcane", "cryptic", "runic"]
+    }
+},
+"CHAPTER 04": {
+    "15. 활력/쇠약": {
+        "힘찬, 강인한": ["potent", "robust", "stalwart", "stout", "sturdy", "vigorous", "brawny", "husky", "puissant", "sinewy"],
+        "활발한": ["active", "animated", "brisk", "energetic", "lively", "mercurial", "skittish", "sprightly", "spry", "ebullient", "effervescent"],
+        "힘, 기력": ["clout", "dint", "potency", "vigor", "brawn", "puissance", "sinew", "thews", "verve", "sap", "vim", "virility"],
+        "힘없는, 약한": ["weak", "weary", "feckless", "feeble", "flabby", "flaccid", "incompetent", "infirm", "limp", "spindly", "effete", "frail"],
+        "무기력한": ["dormant", "inanimate", "inert", "languid", "slumber", "leaden", "lethargic", "listless", "sluggish", "torpid", "lackadaisical"]
+    },
+    "16. 강화/약화": {
+        "강화시키다": ["bolster", "boost", "buttress", "fortify", "prop", "strengthen", "undergird", "underlie", "underpin", "brace"],
+        "약화시키다, 쇠약하게 만들다": ["undermine", "weaken", "debilitate", "effeminate", "enfeeble", "sap", "atrophy", "emaciate", "emasculate", "enervate", "macerate"]
+    },
+    "17. 농축/희석": {
+        "농축하다": ["condense", "concentrate", "consolidate"],
+        "빈약하게 만들다, 희박하게 만들다": ["dilute", "thin", "water down", "rarefy", "attenuate", "extenuate"]
+    },
+    "18. 열정/냉담": {
+        "열정": ["ardor", "passion", "zeal", "fervor", "fervency"],
+        "열정적인/열렬한": ["ardent", "fervent", "fervid", "perfervid", "zealous", "passionate", "impassioned", "torrid"],
+        "열망하다": ["aspire", "crave", "yearn", "long", "covet", "pine"],
+        "열망하는": ["avid", "wistful", "covetous"],
+        "(즐거워서) 흥분한": ["ebullient", "elated", "exhilarated", "excitable", "exuberant", "agog"],
+        "집착": ["preoccupation", "obsession", "solicitude"],
+        "냉담한": ["apathetic", "frigid", "impassive", "indifferent", "insensate", "lackadaisical", "listless", "sluggish", "unconcerned", "fallow", "lethargic", "inertia", "numb", "anesthetize", "analgesia", "nonchalant", "phlegmatic", "blase", "callous", "stolid"]
+    }
+},
+"CHAPTER 05": {
+    "19. 고집/순응": {
+        "고집 센; 다루기 힘든": ["intractable", "incorrigible", "intransigent", "obdurate", "obstinate", "stubborn", "perverse", "pertinacious", "tenacious", "unruly", "willful", "opinionated", "headstrong", "untoward", "recalcitrant", "refractory", "obstreperous"],
+        "복종하는; 다루기 쉬운": ["amenable", "submissive", "obedient", "corrigible", "tractable", "pliable", "pliant", "compliant", "complaisant"],
+        "저항하다, 반항하다": ["disobey", "resist", "defy", "withstand", "counter"],
+        "순응하다; 복종하다": ["comply with", "conform to", "obey", "submit", "acquiesce"]
+    },
+    "20. 유연/경직": {
+        "점성(黏性)의, 끈적거리는": ["sticky", "glutinous", "tacky", "viscous", "viscid"],
+        "연성(延性)의, 휘어지는": ["flexible", "plastic", "malleable", "pliant", "ductile", "tractile"],
+        "탄성의": ["springy", "elastic", "resilient"],
+        "경직된": ["rigid", "stark", "stiff", "inflexible"],
+        "경화시키다": ["calcify", "ossify", "petrify", "indurate"],
+        "미끄러운": ["slick", "sleek", "oily", "unctuous"],
+        "나긋나긋한": ["supple", "lithe", "lissom(e)"],
+        "잘 부서지는": ["fragile", "friable", "brittle"]
+    }
+},
+"CHAPTER 06": {
+    "21. 화해/불화": {
+        "우의(友誼), 친선관계": ["amity", "rapprochement", "affinity", "congeniality", "accord", "rapport", "comity"],
+        "불화, 갈등": ["division", "conflict", "rift", "cleft", "chasm", "schism"],
+        "화해시키다": ["harmonize", "reunite", "reconcile", "moderate", "sort out", "bring to terms", "iron", "arbitrate", "mediate"],
+        "이간질하다": ["alienate", "disaffect", "estrange", "sever", "wean"],
+        "격론, 논쟁": ["altercation", "polemic", "row", "rhubarb"],
+        "언쟁, 말다툼": ["contention", "controversy", "feud", "squabble", "wrangle"],
+        "난투; 심각한 말다툼": ["hassle", "tussle", "fray", "affray", "scuffle", "scrimmage", "rhubarb", "brawl", "fracas"],
+        "소규모 전투; 사소한 말다툼": ["bicker", "skirmish", "spat", "tiff", "miff"],
+        "공식적인 싸움": ["debate", "argument", "box", "spar", "duel"],
+        "호전적인": ["bellicose", "warlike", "belligerent", "martial", "militant", "pugnacious", "scrappy"],
+        "전쟁광": ["warmonger", "jingoist"],
+        "논쟁을 좋아하는": ["argumentative", "contentious", "controversial", "disputatious", "quarrelsome", "polemic(al)", "pugnacious", "scrappy"]
+    },
+    "22. 기쁨/슬픔": {
+        "즐거워하다": ["delight", "cheer", "jubilate", "exult", "rejoice", "effervesce"],
+        "즐겁게 만들다": ["elate", "exhilarate"],
+        "슬퍼하다": ["moan", "mourn", "bemoan", "bewail", "lament", "deplore"],
+        "즐거워하는": ["jovial", "jolly", "rejoicing", "jocund", "exultant", "effervescent", "ebullient", "exuberant"],
+        "해학적인": ["humorous", "hilarious", "jocose", "jocular", "risible"],
+        "슬퍼하는, 우울해 하는": ["morose", "mournful", "sullen", "sulky", "plaintive", "lachrymose", "lugubrious"],
+        "슬픈, 우울하게 만드는": ["lamentable", "deplorable", "mournful", "grievous", "lachrymose", "lugubrious"],
+        "회유하다, 달래다": ["placate", "appease", "conciliate", "propitiate"],
+        "위로하다": ["console", "comfort", "solace"],
+        "괴롭히다": ["inflict", "distress", "torture", "torment", "gruel", "harrow", "harry", "aggrieve"],
+        "괴로움, 고통": ["affliction", "agony", "anguish", "distress", "ordeal", "woe", "travail", "tribulation"],
+        "근심 없는": ["carefree", "insouciant", "blithe"],
+        "(악의 없는) 가벼운 조롱": ["banter", "badinage", "raillery", "persiflage"],
+        "조롱하다": ["rally"]
+    },
+    "23. 불만/만족": {
+        "완화하다": ["allay", "alleviate", "assuage", "mollify", "mitigate", "palliate", "soothe"],
+        "회유하다, 달래다": ["appease", "placate", "conciliate", "propitiate"],
+        "격노하게 만들다": ["incense", "infuriate", "exasperate", "enrage", "bristle"],
+        "짜증나게 만들다": ["annoy", "fret", "irk", "irritate", "nag", "nettle", "peeve", "rankle", "vex", "aggrieve", "disaffect", "badger", "gall"],
+        "화를 잘 내는, 짜증을 잘 내는": ["irritable", "irascible", "crusty", "cross", "touchy", "cantankerous", "testy", "ticklish", "dyspeptic", "bilious", "peevish", "petulant", "choleric"],
+        "(성미가) 온화한": ["affable", "congenial", "genial", "lenient", "amicable", "amiable", "patient", "even-tempered", "suave"],
+        "화": ["resentment", "ire", "pique", "tantrum", "umbrage", "bile", "choler"],
+        "화를 내다": ["roar", "rage", "bristle", "rant", "rave"]
+    },
+    "24. 용이/곤란": {
+        "손쉬운, 용이한": ["effortless", "glib", "facile"],
+        "힘든, 어려운": ["awkward", "arduous", "demanding", "onerous", "burdensome", "cumbersome", "grueling", "spiny", "trying", "labored", "laborious", "exacting", "taxing"],
+        "손쉬운 일": ["sinecure", "doddle", "pushover"],
+        "부담": ["burden", "ordeal", "onus", "toil", "travail", "tribulation"],
+        "곤경을 해결하다": ["unravel", "untangle", "disentangle", "extricate"],
+        "곤경, 난처한 상황": ["dilemma", "deadlock", "impasse", "lurch", "morass", "nonplus", "plight", "predicament", "quagmire", "quandary", "stalemate", "stymie", "blind alley", "cul-de-sac", "imbroglio"],
+        "곤경에 빠뜨리다": ["broil", "embroil", "mesh", "enmesh", "snare", "ensnare", "tangle", "entangle", "trap", "entrap", "implicate", "involve", "mire", "ravel", "snarl"]
+    }
+},
+"CHAPTER 07": {
+    "25. 관대/인색": {
+        "인심이 후한, 관대한": ["generous", "magnanimous", "lavish", "liberal", "munificent", "profuse"],
+        "인색한": ["stingy", "miserly", "parsimonious", "penurious"],
+        "인색하게 굴다": ["scant", "grudge", "begrudge", "stint", "skimp"],
+        "낭비하는; 방탕한": ["extravagant", "exorbitant", "lavish", "profuse", "prodigal", "profligate", "spendthrift"],
+        "절약하는": ["thrifty", "economical", "frugal", "husbanding"],
+        "낭비가": ["spendthrift", "prodigal", "profligate", "wastrel"],
+        "낭비하다": ["waste", "dissipate", "squander"],
+        "절약하다": ["economize", "husband"],
+        "모아서 쌓아두다": ["collect", "gather", "store", "garner", "accumulate", "amass", "hoard"]
+    },
+    "26. 상냥/신랄": {
+        "상냥한": ["affable", "agreeable", "amiable", "amicable", "bland", "even-tempered", "gentle", "genial", "lenient", "suave"],
+        "(태도나 기후가) 온화한": ["balmy", "mild"],
+        "신랄한": ["acerbic", "acid", "caustic", "cutting", "edgy", "incisive", "pungent", "trenchant", "truculent", "acrimonious", "mordant", "vitriolic", "piquant", "racy"]
+    }
+},
+"CHAPTER 08": {
+    "27. 신중/성급": {
+        "신중한, 주의 깊은": ["careful", "heedful", "circumspect", "wary", "advertent", "chary"],
+        "신중하고 현명한": ["discreet", "deliberate", "thoughtful", "judicious", "prudent"],
+        "부주의한, 무모한": ["careless", "heedless", "reckless", "headlong", "inadvertent", "rash", "brash", "impetuous", "impulsive", "impudent", "imprudent", "precipitate", "precipitant", "precipitous", "slipshod"],
+        "매우 세심한": ["meticulous", "scrupulous", "conscientious", "punctilious"],
+        "지나치게 세심한": ["fastidious", "fussy", "delicate", "meticulous", "overscrupulous", "demanding", "finical", "finicky", "pernickety", "persnickety", "squeamish"],
+        "경계하는, 위험에 주의하는": ["alert", "vigilant", "chary"],
+        "(직무에) 해이한": ["negligent", "delinquent", "slack", "lax", "remiss", "supine"],
+        "엉성한/건성의": ["cursory", "crude", "perfunctory"],
+        "자세히 조사하다": ["scrutinize", "peruse", "overhaul", "probe", "bolt", "plumb", "sift"],
+        "건성으로 살펴보다": ["glance", "glimpse", "blink", "gloss over", "skim"],
+        "진지한": ["earnest", "serious", "grave", "sober"],
+        "경솔함": ["levity", "flippancy", "frivolity"],
+        "즉흥적인": ["ad lib", "extempore", "impromptu", "extemporaneous", "offhand"],
+        "즉흥적으로 연주하다": ["extemporize", "improvise"]
+    },
+    "28. 이동/정지": {
+        "돌아다니는": ["wandering", "mobile", "errant", "vagrant", "nomadic", "motile", "itinerant", "peripatetic", "vagabond"],
+        "정지한": ["motionless", "settled", "stationary", "sedentary", "quiescent"]
+    }
+},
+"CHAPTER 09": {
+    "29. 예의/무례": {
+        "예의 바른/정중한": ["civil", "proper", "complaisant", "seemly", "decent", "decorous", "urbane"],
+        "건방진": ["arrogant", "haughty", "presumptuous", "supercilious", "brazen", "impudent", "insolent"],
+        "무례한, 불손한": ["indecorous", "indecent", "improper", "unseemly", "uncivil", "inurbane"],
+        "언행(言行)이 상스러운": ["tactless", "boorish", "churlish", "loutish"]
+    },
+    "30. 화려/소박": {
+        "장식": ["decoration", "embellishment", "adornment", "ornament"],
+        "장식하다": ["adorn", "decorate", "embellish", "garnish", "ornament", "bedeck", "bedizen", "caparison"],
+        "장식이 화려한": ["showy", "elaborate", "flamboyant", "florid", "flourishing", "garish", "grandstand", "luxuriant", "ornate", "ostentatious"],
+        "장식이 없는, 소박한": ["simple", "severe", "plain", "austere", "spartan", "stark"]
+    },
+    "31. 거만/겸손": {
+        "거만한": ["arrogant", "haughty", "imperious", "impudent", "perky", "pert", "presumptuous", "saucy", "supercilious", "insolent"],
+        "거만, 뻔뻔함": ["effrontery", "hubris", "chutzpa(h)"],
+        "자만하는": ["vain", "complacent", "conceited", "smug", "self-satisfied", "self-important", "smirk", "gloat"],
+        "겸손한": ["modest", "humble", "humility", "lowly", "unostentatious", "unboastful", "unobtrusive", "unpresumptuous"],
+        "거만하게 걷다": ["pontificate", "strut", "mince", "stalk", "swagger"],
+        "허세를 부리다; 허풍을 치다": ["showy", "show off", "ostentatious", "flaunt", "vaunt", "boast", "brag"],
+        "아첨하다": ["fawn", "flatter", "adulate", "curry favor", "blandish", "ingratiate", "toady", "lackey", "smarm"],
+        "아첨하는": ["obsequious", "sycophantic", "servile", "slavish", "subservient", "truckling", "smarmy"],
+        "아첨꾼": ["flatterer", "sycophant", "toady", "lackey"]
+    },
+    "32. 금욕/방탕": {
+        "(욕구를) 참다, 절제하다": ["abstain", "contain", "inhibit", "refrain", "restraint", "forbear", "smolder", "swallow", "moderate", "temper", "continence"],
+        "금욕(禁慾)의/금주(禁酒)의": ["abstemious", "abstinent", "ascetic", "ascetical", "stoic", "stoical", "moderate", "temperate", "teetotalism"],
+        "타락한/방탕한": ["corrupt", "degenerate", "dissolute", "reprobate", "sybarite"],
+        "쾌락에 탐닉하는": ["indulgent", "self-indulgent", "hedonistic"],
+        "호색의, 음란한": ["lewd", "wanton", "lascivious", "lecherous", "libidinous", "prurient", "promiscuous"],
+        "금욕주의자": ["ascetic", "stoic", "celibate", "teetotaler"],
+        "쾌락주의자": ["degenerate", "hedonist", "sybarite", "reprobate"]
+    }
+},
+"CHAPTER 10": {
+    "33. 소심/용기": {
+        "겁주다": ["intimidate", "threaten", "bully", "cow", "daunt", "discourage", "dishearten", "menace", "hector", "browbeat", "bluster"],
+        "격려하다": ["encourage", "hearten", "inspire", "embolden"],
+        "(겁먹고) 주춤하다": ["flinch", "wince", "recoil", "shrink", "shrivel", "balk", "cower"],
+        "위협적인/협박하는": ["threatening", "menacing", "minatory"],
+        "겁 많은/소심한": ["cowardly", "craven", "timid", "timorous", "trepid", "pusillanimous"],
+        "낙담한/풀이 죽은": ["dejected", "depressed", "disheartened", "dispirited", "downcast", "damped", "dampened", "despondent", "crestfallen"],
+        "겁 없는/대담한": ["fearless", "bold", "audacious", "dauntless", "intrepid"],
+        "용감한": ["brave", "courageous", "plucky", "mettlesome", "valorous", "prow"]
+    },
+    "34. 총명/우둔": {
+        "총명한": ["acute", "astute", "brilliant", "keen", "perspicacious", "sagacious", "sapient", "shrewd", "prescient", "erudite", "finesse", "savant", "agile", "argute", "canny", "longheaded", "ingenious", "ratiocinate"],
+        "바보 같은, 어리석은": ["dopey", "dull", "fatuous", "idiotic", "imbecilic", "moronic", "inane", "vacuous", "crass", "cretinous", "doltish", "hebetudinous", "heavy-handed", "philistine"]
+    },
+    "35. 능숙/미숙": {
+        "손재주가 있는, 능숙한": ["dexterous", "ambidextrous", "adroit", "ept", "deft"],
+        "서툰, 솜씨 없는": ["awkward", "bungling", "clumsy", "inept", "maladept", "maladroit", "uncouth", "ungainly", "gauche", "gawky"],
+        "서툴게 다루다, 망쳐놓다": ["blunder", "botch", "bumble", "bungle", "fumble", "meddle", "tamper", "tinker"],
+        "숙달된": ["familiar", "adept", "professional", "proficient", "versed", "conversant"]
+    },
+    "36. 정신/물질": {
+        "정신의": ["mental", "nonphysical", "psychic", "spiritual", "immaterial", "noetic", "phrenic"],
+        "육신의": ["corporal", "corporeal", "fleshy", "physical", "material", "carnal", "somatic"],
+        "구체적인": ["touchable", "material", "substantial", "substantive", "palpable", "tangible"],
+        "실체가 없는": ["untouchable", "incorporeal", "immaterial", "unsubstantial", "subliminal", "intangible", "impalpable"],
+        "감각의": ["sensory", "sensual", "sensuous", "sensational", "sensitive"]
+    }
+},
+"CHAPTER 11": {
+    "37. 수여/박탈": {
+        "수여하다": ["endow", "bestow", "afford", "confer"],
+        "박탈/강탈하다": ["deprive", "exact", "bereave", "divest"],
+        "포기하다": ["forsake", "relinquish", "repudiate", "surrender", "concede", "renounce", "abdicate"],
+        "보상하다": ["reimburse", "recompense", "indemnify", "remunerate", "reciprocate", "recoup", "requite"],
+        "보복하다": ["revenge", "avenge", "retaliate", "revanche", "retribution", "requite"]
+    },
+    "38. 풍부/궁핍": {
+        "풍부한": ["abounding", "affluent", "abundant", "opulent", "lush", "lavish", "profuse", "exuberant", "plentiful", "plenitudinous", "copious", "cornucopian", "rife"],
+        "과잉의; 불필요한": ["excessive", "extravagant", "exorbitant", "redundant", "superfluous", "plethoric"],
+        "필수불가결한": ["essential", "integral", "indispensable", "requisite", "prerequisite", "vital"],
+        "궁핍한, 가난한": ["needy", "impoverished", "impecunious", "penurious", "destitute", "exiguous", "indigent"],
+        "과잉": ["excess", "redundancy", "extravagance", "exorbitance", "superfluity", "plethora", "glut"],
+        "결핍": ["lack", "deprivation", "deficiency", "want"],
+        "궁핍, 가난": ["deficiency", "famine", "dearth", "destitution", "impecuniosity", "impoverishment", "indigence", "paucity", "penury", "scarcity", "exiguity", "privation"]
+    },
+    "39. 장황/간결": {
+        "장황한, 말이 많은": ["redundant", "superfluous", "wordy", "garrulous", "loquacious", "verbose", "voluble", "tautology", "pleonasm", "prolix"],
+        "(말이) 간결한": ["spartan", "terse", "laconic", "succinct", "pithy", "compendious", "curt"],
+        "과묵한": ["mute", "reserved", "reticent", "taciturn"],
+        "암묵적인": ["unspoken", "implicit", "tacit"],
+        "핵심, 요점": ["essence", "gist", "crux", "pith", "kernel"]
+    }
+},
+"CHAPTER 12": {
+    "40. 번성/쇠퇴": {
+        "번성하다": ["multiply", "burgeon", "flourish", "thrive", "wax", "propagate", "proliferate"],
+        "시들다, 마르다": ["atrophy", "wane", "scorch", "parch", "wither", "wilt", "wizen", "sear", "sere"]
+    },
+    "41. 비옥/불모": {
+        "다산(多産)의; 비옥한": ["teeming", "luxuriant", "fruitful", "fecund", "fertile", "prolific", "well-manured"],
+        "불임의; 불모의; 척박한": ["impoverished", "unproductive", "infertile", "sterile", "bare", "barren", "bleak", "desolate", "forlorn", "acarpous"]
+    },
+    "42. 안정/변덕": {
+        "안정된; 변화하지 않는": ["stable", "continuous", "consistent", "constant", "predictable", "persevering", "sturdy", "unwavering", "durable", "steadfast"],
+        "결심이 단호한": ["decisive", "determined", "unmoved", "resolute"],
+        "변덕스런, 예측불가의": ["erratic", "whimsical", "capricious", "faddish", "labile", "mercurial", "variable", "volatile", "vagarious", "vagrant", "fickle"],
+        "불변의": ["unchangeable", "uniform", "constant", "invariable", "unvarying", "steady", "immutable", "steadfast"],
+        "변형하다": ["transform", "transmute", "mutate", "metamorphose"]
+    },
+    "43. 이질/동질": {
+        "동질적인, 같은": ["uniform", "identical", "indistinguishable", "equivalent", "compatible", "congruous", "congruent", "analogous", "homogeneous", "parity", "tantamount", "commensurate", "consubstantial"],
+        "이질적인, 다른": ["various", "variable", "variant", "diverse", "disparate", "discrepant", "discrete", "diversify", "differentiate", "heterogeneous", "incompatible", "incongruous", "incongruent", "versatile", "variegate", "variegated"]
+    }
+},
+"CHAPTER 13": {
+    "44. 진정/동요": {
+        "냉정한; 침착한": ["equable", "tranquil", "placid", "composed", "poised", "imperturbable", "sedate", "impassive", "serene", "staid"],
+        "냉정, 침착": ["equanimity", "sedateness", "composure", "poise", "impassivity", "imperturbability", "self-possession", "staidness", "aplomb"],
+        "진정시키다": ["settle", "calm", "pacify", "sedate", "soothe", "assuage", "allay", "lull", "compose"],
+        "동요시키다": ["fluctuate", "agitate", "ruffle", "disquiet", "disturb", "discombobulate", "discompose", "disconcert", "perturb", "faze", "roil"],
+        "단호하게 결심하다": ["stand firm", "resolve firmly", "decisive", "resolute"],
+        "망설이다, 머뭇거리다": ["oscillate", "vacillate", "falter", "linger", "scruple"]
+    },
+    "45. 평온/소란": {
+        "고요한, 평온한": ["equable", "calm", "tranquil", "serene", "placid", "hushed", "halcyon"],
+        "매우 소란스러운": ["turbulent", "rowdy", "din", "boisterous", "vociferous", "stentorian"],
+        "일시적 평온": ["lull", "repose", "respite"],
+        "소동, 난장판": ["commotion", "tumult", "turmoil", "uproar", "maelstrom", "melee", "pandemonium", "tempest", "bedlam"],
+        "화음이 좋은, 감미로운": ["consonant", "concordant", "euphonious", "mellifluous", "dulcet"],
+        "(불협화음의) 시끄러운": ["dissonant", "discordant", "strident", "raspy", "grating", "cacophonous"],
+        "전원적, 목가적": ["pastoral", "idyllic", "bucolic", "georgic"]
+    }
+},
+"CHAPTER 14": {
+    "46. 투명/불투명": {
+        "투명한, 명확한": ["transparent", "limpid", "lucid", "pellucid", "perspicuous"],
+        "반투명한, 명확한": ["translucent", "diaphanous"],
+        "불투명한, 불명료한": ["hazy", "vague", "murky", "opaque", "nebulous", "turbid"]
+    },
+    "47. 명료/혼동": {
+        "명료한; 두드러진": ["obvious", "explicit", "broad", "conspicuous", "salient"],
+        "모호한": ["vague", "ambiguous", "equivocal", "hazy", "obscure", "opaque", "nebulous", "turbid", "murky"],
+        "명료하게 밝히다": ["illuminate", "clarify", "construe", "elucidate", "enlighten", "explicate", "expound", "descant", "expatiate"],
+        "혼동을 주다": ["baffle", "befuddle", "bemuse", "bewilder", "confound", "confuse", "discombobulate", "faze", "fluster", "jumble", "obfuscate", "perplex"]
+    },
+    "48. 오염/순수": {
+        "원상태 그대로의": ["intact", "inviolate", "pristine", "unscathed"],
+        "더럽혀지지 않은": ["decontaminated", "immaculate", "innocent", "sterilized", "unspotted", "untarnished", "unblemished", "unsullied"],
+        "더러운; 비천한": ["squalid", "sordid", "filthy", "mucky"],
+        "(명예나 가치를) 더럽히다": ["adulterate", "contaminate", "sully", "smear", "muck", "vitiate", "defile", "denigrate", "distain", "imbrue", "smirch", "besmirch"],
+        "(오점이나 얼룩으로) 더럽히다": ["taint", "blemish", "spot", "stain", "maculate", "blot", "blotch"]
+    }
+},
+"CHAPTER 15": {
+    "49. 참신/진부": {
+        "진부한": ["cliched", "stereotyped", "hackneyed", "trite", "banal", "bromidic", "platitudinous", "boiler-plate(d)"],
+        "기이한": ["weird", "bizarre", "quaint", "unworited", "extraordinary"],
+        "정상에서 일탈한": ["aberrant", "digressive", "deviant", "divergent"],
+        "비정상의": ["abnormal", "atypical", "anomalous"],
+        "독특한, 유일무이한": ["unique", "inimitable", "singular"],
+        "흥미로운, 재미있는": ["intriguing", "exotic", "gripping", "arresting", "compelling"],
+        "톡 쏘는 맛의, 재미있는": ["tasty", "juicy", "racy", "piquant"],
+        "따분한, 재미없는": ["bland", "insipid", "tasteless", "tedious", "weary", "prosaic", "jejune", "stodgy", "tame", "tedium", "ennui", "vapid"],
+        "함몰의, 움푹 들어간": ["retreated", "recessed", "dented"],
+        "양각": ["engrave", "intaglio", "emboss", "relief", "relievo"],
+        "평범한, 그저 그런": ["ordinary", "conventional", "commonplace", "mediocre", "indistinct", "pedestrian", "mundane", "stock", "quotidian", "wonted"],
+        "참신한, 독창적인": ["fresh", "imaginative", "inventive", "original"]
+    },
+    "50. 직선/곡선": {
+        "꾸불꾸불한, 복잡한": ["winding", "labyrinthine", "byzantine", "meander", "convoluted", "involuted", "sinuous", "tortuous"],
+        "돌출의, 밖으로 튀어 나온": ["protrudent", "protrusive", "protuberant", "obtrusive", "bulge"],
+        "직선의; 똑바로 향한": ["straight", "direct", "undeviating", "unswerving", "home in on", "zero in on"],
+        "요철의, 가장자리가 톱니 모양의": ["indented", "notched", "jag", "serrated", "pink"]
+    }
+},
+"CHAPTER 16": {
+    "51. 촉진/억제": {
+        "촉진하다": ["facilitate", "expedite", "catalyze"],
+        "선동하다": ["incite", "instigate", "prompt", "prod", "goad", "foment", "ferment", "abet", "egg", "leaven", "whet"],
+        "방해하다": ["preclude", "forestall", "stall", "deter", "stem", "sabotage", "inhibit", "thwart", "hamper", "hinder", "stymie", "balk"],
+        "금지하다": ["debar", "enjoin", "inhibit", "interdict", "prohibit", "proscribe"],
+        "진압하다": ["subdue", "dominate", "repress", "suppress", "squelch", "quench", "quell"]
+    },
+    "52. 속박/해방": {
+        "구속, 속박": ["bondage", "coercion", "yoke", "duress", "cuff", "custody", "incarceration", "shackle"],
+        "고삐로 속박하다": ["bridle", "curb", "leash", "rein", "tether"],
+        "풀어주다, 자유롭게 해주다": ["release", "liberate", "unfasten", "disentangle", "untangle", "disenthrall", "unravel", "extricate"],
+        "족쇄로 속박하다": ["fetter", "enfetter", "manacle", "shackle", "cuff"],
+        "노예를 해방시키다": ["enfranchise", "emancipate", "manumit"],
+        "묶다, 속박하다": ["fasten", "restrain", "constrain", "restrict", "secure", "enthrall", "cramp", "detain", "incarcerate", "immure", "impound"],
+        "추방하다": ["deport", "banish", "expel", "exile", "expatriate", "oust", "ostracize", "dislodge", "depose"],
+        "고삐에서 풀어주다": ["unleash", "unrein", "unbridle", "untether"]
+    }
+},
+"CHAPTER 17": {
+    "53. 습윤/건조": {
+        "젖게 만들다": ["bathe", "damp", "dampen", "drench", "embrue", "imbrue", "imbue", "macerate", "reconstitute", "bedraggle"],
+        "푹 젖게 만들다": ["saturate", "soak", "sodden", "sop", "steep"],
+        "푹 담그다": ["immerse", "quench", "douse", "dowse", "steep"],
+        "물에 젖은": ["awash", "sodden", "soggy"],
+        "건조시키다": ["dehydrate", "parch", "sear", "scorch", "desiccate"],
+        "바싹 마른, 수분이 없는": ["dehydrated", "anhydrous", "hydrate", "parched", "scorched", "desiccated", "sear", "sere"],
+        "족쇄에서 풀어주다": ["unfetter", "unshackle"]
+    }
+},
+"CHAPTER 18": {
+    "54. 유익/유해": {
+        "유익한, 이로운": ["healthful", "wholesome", "salubrious", "salutary", "salutiferous"],
+        "유리한, 유익한": ["advantageous", "beneficial", "benign", "favorable", "lucrative", "profitable", "propitious", "auspicious", "toward"],
+        "독성의, 해로운": ["poisonous", "toxic", "venomous", "virulent"],
+        "치명적인": ["fatal", "lethal", "mortal", "deadly"],
+        "원한을 품은": ["baleful", "baneful", "grudging", "inimical", "rancorous", "malicious", "spiteful", "splenetic", "virulent"],
+        "유해한": ["baleful", "baneful", "deleterious", "detrimental", "harmful", "inimical", "maleficent", "nocuous", "noisome"],
+        "해로운/불쾌한": ["unhealthy", "unhealthful", "noxious", "obnoxious", "unwholesome", "pernicious", "pestilential", "ruinous", "virulent"]
+    }
+},
+"CHAPTER 19": {
+    "55. 유지/중지": {
+        "끈질기게 지속하다": ["endure", "persevere", "persist"],
+        "(일시적) 중지, 정지": ["moratorium", "probation", "repose", "reprieve", "respite", "suspension", "abscission", "cessation", "surcease"],
+        "일시적인; 수명이 짧은": ["ephemeral", "evanescent", "fleeting", "fugacious", "fugitive", "transient", "transitory", "vanishing"],
+        "지속적인, 끊임없는": ["constant", "continuous", "eternal", "incessant", "perennial", "perpetual", "perpetuated", "unremitting"],
+        "휴전, 정전": ["armistice", "cease-fire", "truce"],
+        "영구적인, 수명이 긴": ["lasting", "enduring", "permanent", "perpetual", "perennial"],
+        "고질적인": ["ingrained", "inveterate", "incorrigible", "indelible", "recidivism", "chronic", "ineradicable", "inexterminable", "secular"],
+        "단속적인; 산발적인": ["casual", "incidental", "intermittent", "sporadic", "spasmodic", "fitful"]
+    },
+    "56. 지속/일시": {
+        "끈질기게 지속하다": ["endure", "persevere", "persist"],
+        "(일시적) 중지, 정지": ["moratorium", "probation", "repose", "reprieve", "respite", "suspension", "abscission", "cessation", "surcease"],
+        "일시적인; 수명이 짧은": ["ephemeral", "evanescent", "fleeting", "fugacious", "fugitive", "transient", "transitory", "vanishing"],
+        "지속적인, 끊임없는": ["constant", "continuous", "eternal", "incessant", "perennial", "perpetual", "perpetuated", "unremitting"],
+        "휴전, 정전": ["armistice", "cease-fire", "truce"],
+        "영구적인, 수명이 긴": ["lasting", "enduring", "permanent", "perpetual", "perennial"],
+        "고질적인": ["ingrained", "inveterate", "incorrigible", "indelible", "recidivism", "chronic", "ineradicable", "inexterminable", "secular"],
+        "단속적인; 산발적인": ["casual", "incidental", "intermittent", "sporadic", "spasmodic", "fitful"]
+    }
+},
+"CHAPTER 20": {
+    "57. 중요/사소": {
+        "중요한": ["significant", "consequential"],
+        "실체가 있는; 중요한": ["substantial", "substantive", "material"],
+        "주요한": ["major", "principal", "cardinal"],
+        "보조의": ["accessory", "subordinate", "peripheral", "ancillary", "auxiliary"],
+        "시시한 것, 사소한 것": ["trivia", "trifle", "nonentity", "pittance", "bagatelle", "bauble"],
+        "적절한, 타당한": ["apt", "appropriate", "proper", "relevant", "apposite", "material", "inherent", "intrinsic", "pertinent", "germane"],
+        "부적절한, 관련 없는": ["improper", "inappropriate", "irrelevant", "inapposite", "immaterial", "extraneous", "extrinsic", "impertinent"],
+        "과소평가하다": ["decry", "discredit", "disparage", "depreciate", "minimize", "underestimate", "underrate", "understate", "belittle"],
+        "과대평가하다": ["amplify", "magnify", "overblow", "overemphasize", "overestimate", "overrate", "overstate", "rant"],
+        "과장된 말/허세의 말": ["bombast", "grandiloquence", "hyperbole", "overestimate", "overestimation", "overstatement", "pomposity", "rant", "fustian"],
+        "팽창하다": ["balloon", "bulge", "distend", "expand", "extend", "bloat", "dilate", "heave", "swell"],
+        "수축시키다": ["compress", "constrict", "contract"],
+        "연장하다": ["extend", "lengthen", "prolong", "protract"],
+        "짧게 줄이다; 축약하다": ["shorten", "abbreviate", "abridge", "curtail", "retrench", "truncate"],
+        "증대시키다, 증가시키다": ["enlarge", "augment", "aggrandize"],
+        "생략하다": ["abbreviate", "omit", "retrench", "syncopate"]
+    }
+},
+"CHAPTER 21": {
+    "58. 확대/축소": {
+        "과소평가하다": ["decry", "discredit", "disparage", "depreciate", "minimize", "underestimate", "underrate", "understate", "belittle"],
+        "과대평가하다": ["amplify", "magnify", "overblow", "overemphasize", "overestimate", "overrate", "overstate", "rant"],
+        "과장된 말/허세의 말": ["bombast", "grandiloquence", "hyperbole", "overestimate", "overestimation", "overstatement", "pomposity", "rant", "fustian"],
+        "팽창하다": ["balloon", "bulge", "distend", "expand", "extend", "bloat", "dilate", "heave", "swell"],
+        "수축시키다": ["compress", "constrict", "contract"],
+        "연장하다": ["extend", "lengthen", "prolong", "protract"],
+        "짧게 줄이다; 축약하다": ["shorten", "abbreviate", "abridge", "curtail", "retrench", "truncate"],
+        "증대시키다, 증가시키다": ["enlarge", "augment", "aggrandize"],
+        "생략하다": ["abbreviate", "omit", "retrench", "syncopate"]
+    },
+    "59. 퍼뜨리다/모으다": {
+        "퍼뜨리다, 흩뿌리다": ["disperse", "disseminate", "diffuse", "intersperse"],
+        "모아두다, 쌓아두다": ["accumulate", "amass", "garner", "hoard"],
+        "널리 전파하다; 포고하다": ["trumpet", "proclaim", "propagate", "promulgate"],
+        "제한하다, 억제하다": ["constrain", "restrain", "constrict", "restrict", "detain", "withhold", "circumscribe", "qualify", "smolder"],
+        "갈라진 틈, 균열": ["gap", "break", "cleft", "crevice", "chasm", "hiatus", "rift"]
+    }
+},
+"CHAPTER 22": {
+    "60. 분할/통합": {
+        "분리하다; 격리하다": ["isolate", "disengage", "disintegrate", "seclude", "segregate", "separate", "sequester", "cloister", "wean"],
+        "분할하다": ["partition", "segment", "fragment", "portion", "apportion", "parcel"],
+        "찢다": ["excise", "incise", "rupture", "tear", "sever", "abscise", "lacerate", "rive", "sunder"],
+        "통합하다, 합병하다": ["unite", "consolidate", "coalesce", "integrate", "meld", "merge", "annex"]
+    },
+    "61. 완화/악화": {
+        "완화시키다": ["allay", "mollify", "mitigate", "pacify", "calm", "soothe", "alleviate"],
+        "악화시키다": ["exacerbate", "aggravate", "worsen", "deteriorate"],
+        "지지하다, 유지하다": ["uphold", "advocate", "espouse", "champion", "countenance"],
+        "(습관이나 권리 등을) 포기하다": ["disclaim", "repudiate", "relinquish", "renounce", "abnegate"],
+        "개선하다": ["improve", "better", "ameliorate"],
+        "봉합하다": ["suture", "solder"]
+    }
+},
+"CHAPTER 23": {
+    "62. 존치/폐지": {
+        "존치하다": ["retain", "support"],
+        "폐지하다, 폐기하다": ["annul", "nullify", "liquidate", "abolish", "abrogate", "repeal", "retract", "rescind", "revoke", "recant"]
+    },
+    "63. 행복/불행": {
+        "지극한 행복, 황홀경": ["ecstasy", "bliss", "euphoria", "elysium", "mirth", "trance", "felicity", "beatitude"],
+        "불행, 비참": ["misery", "abjection", "wretchedness", "woe"],
+        "행운": ["fortune", "blessing", "hap"],
+        "재난, 불행": ["mishap", "disaster", "calamity", "catastrophe", "debacle", "fiasco"],
+        "우연한 행운, 뜻밖의 행운": ["jackpot", "windfall", "godsend", "fluke", "serendipity"],
+        "불운": ["misadventure", "mischance", "mishap", "haplessness"],
+        "길조(吉兆)의": ["favorable", "auspicious", "propitious", "toward"],
+        "흉조(凶兆)의": ["unfortunate", "unlucky", "ill-omened", "inauspicious", "ominous", "sinister", "untoward"],
+        "시기가 좋은, 기회가 좋은": ["convenient", "apropos", "timely", "opportune"],
+        "시기가 나쁜, 기회가 나쁜": ["inconvenient", "untimely", "inopportune", "malapropos"]
+    }
+},
+"CHAPTER 24": {
+    "64. 견고/취약": {
+        "난공불락(難攻不落)의, 공격할 수 없는": ["invulnerable", "invincible", "inviolable", "indomitable", "impregnable", "tenable"],
+        "상처받기 쉬운": ["susceptible", "vulnerable", "violable", "vincible", "pregnable", "untenable"],
+        "안전한 장소, 피난처": ["haven", "lair", "sanctum", "sanctuary"],
+        "침압하다": ["assault", "assail", "invade", "incursion", "sally"]
+    },
+    "65. 공정/편파": {
+        "공정한, 불편부당한": ["aloof", "detached", "disinterested", "dispassionate", "unimpassioned", "equitable", "fair", "impartial", "just", "unbiased", "unprejudiced", "unjaundiced"],
+        "파벌적인, 당파성이 있는": ["factional", "factious", "clannish", "cliquey", "partisan"],
+        "불공정한, 편파적인": ["prejudiced", "biased", "inequitable", "partial", "interested", "partisan", "unfair", "unjust", "tendentious", "jaundiced"],
+        "적성/(좋아하는, 잘하는) 성향": ["bent", "inclination", "predilection", "proclivity", "propensity", "penchant", "predisposition", "gust"]
+    }
+},
+"CHAPTER 25": {
+    "66. 흡수/발산": {
+        "투과성의": ["porous", "permeable", "pervious", "penetrable", "osmotic"],
+        "비투과성의, 밀폐된": ["nonporous", "impermeable", "impervious", "impenetrable", "airtight", "hermetic"],
+        "주입하다; 스며들게 하다": ["inspire", "infuse", "imbue", "inculcate", "instill", "indoctrinate", "infiltrate"],
+        "흡수하다; 빨아들이다": ["absorb", "imbibe", "engulf", "gorge"],
+        "발산하다; 내뿜다": ["emit", "eject", "spew", "emanate", "radiate", "excrete"]
+    },
+    "67. 고수/하수": {
+        "전문가": ["expert", "professional", "connoisseur", "diplomate", "adept", "veteran", "virtuoso", "master", "maestro", "maven", "artisan", "doyen", "cognoscente"],
+        "초보의; 미숙한": ["callow", "infant", "recruit", "rookie", "neophyte", "novice", "dabbler", "dilettante", "greenhorn", "tenderfoot", "tiro", "tyro"],
+        "초보자": ["amateur", "apprentice", "fledg(e)ling", "unfledged", "inexperienced", "immature", "premature", "verdant", "uninitiate(d)"],
+        "완전히 성장한, 완전히 성숙한": ["full-blown", "full-fledged", "fully established", "fully formed"]
+    },
+    "68. 시작/종결": {
+        "작품의 도입부": ["prelude", "prologue", "exordium", "overture", "preamble"],
+        "작품의 종결부": ["coda", "denouement", "envoy", "epilogue", "finale", "peroration", "outrance", "upshot", "explicit"],
+        "시작하다, 창시하다": ["embark", "inaugurate", "induct", "incept", "initiate", "launch", "commence"],
+        "(생명을) 발생시키다, 시작하다": ["create", "initiate", "engender", "procreate", "beget", "spawn"],
+        "초기(발생) 단계의": ["germinal", "embryonic", "incipient", "nascent", "inchoate", "rudimentary"],
+        "박멸하다": ["annihilate", "decimate", "demolish", "eradicate", "exterminate", "extirpate"],
+        "완전히 성장한, 완전히 성숙한": ["full-blown", "full-fledged", "fully established", "fully formed"],
+        "초보자": ["amateur", "apprentice", "fledg(e)ling", "unfledged", "inexperienced", "immature", "premature", "verdant", "uninitiate(d)"]
+    },
+    "69. 정점/저점": {
+        "정점, 최정상": ["acme", "apex", "crest", "ridge", "crown", "culmination", "pinnacle", "stratosphere", "summit", "vertex", "zenith"],
+        "최저점": ["nadir", "furrow", "trough", "abyss"]
+    },
+    "70. 선천/후천": {
+        "선천적인": ["congenital", "hereditary", "inborn", "inherent", "inherited", "innate"],
+        "후천적인": ["learned", "acquired", "experimental", "blank slate", "tabula rasa"]
+    }
+}
+        };
+
+        let allKoreanWords = {};
+        for (const chapter in allChapterData) {
+            for (const category in allChapterData[chapter]) {
+                for (const korean in allChapterData[chapter][category]) {
+                    allKoreanWords[korean] = allChapterData[chapter][category][korean];
+                }
+            }
+        }
+        
+        // 역방향 매핑 (영어 단어 -> 한글 뜻)을 위한 함수
+        let englishToKoreanMap = {};
+        function createEnglishToKoreanMap() {
+            englishToKoreanMap = {};
+            for (const chapter in allChapterData) {
+                for (const category in allChapterData[chapter]) {
+                    for (const korean in allChapterData[chapter][category]) {
+                        allChapterData[chapter][category][korean].forEach(word => {
+                            englishToKoreanMap[word] = korean;
+                        });
+                    }
+                }
+            }
+        }
+        createEnglishToKoreanMap();
+        
+        let currentChapter = "";
+        let currentCategory = "";
+        let currentGroupIndex = 0;
+        let sessionGroups = [];
+
+        // DOM Elements
+        const synonymGroupViewEl = document.getElementById('synonym-group-view');
+        const koreanDefinitionEl = document.getElementById('korean-definition');
+        const wordButtonsContainerEl = document.getElementById('word-buttons-container');
+        const progressIndicatorEl = document.getElementById('progress-indicator');
+        const checkAnswerBtn = document.getElementById('check-answer-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const feedbackMessageEl = document.getElementById('feedback-message');
+        const menuBtn = document.getElementById('menu-btn');
+        const learningTitleEl = document.getElementById('learning-title');
+        const chapterMenuModal = document.getElementById('chapter-menu-modal');
+        const categoryMenuModal = document.getElementById('category-menu-modal');
+        const categoryModalTitleEl = document.getElementById('category-modal-title');
+        const categoryListEl = document.getElementById('category-list');
+        const closeMenuBtn = document.getElementById('close-menu-btn');
+        const closeCategoryMenuBtn = document.getElementById('close-category-menu-btn');
+        const generateExampleBtn = document.getElementById('generate-example-btn');
+
+        // AI 예문 모달 관련 DOM 요소
+        const aiExampleModal = document.getElementById('ai-example-modal');
+        const aiExampleContent = document.getElementById('ai-example-content');
+        const exampleModalTitleEl = document.getElementById('example-modal-title');
+        const closeExampleModalBtn = document.getElementById('close-example-modal-btn');
+        
+        // 유의어 그룹 학습 세션 시작
+        function startSynonymSession(chapter, categoryName) {
+            currentChapter = chapter;
+            currentCategory = categoryName;
+            const groups = allChapterData[currentChapter][currentCategory];
+            if (!groups) {
+                console.error("Category data not found:", currentChapter, currentCategory);
+                return;
+            }
+            sessionGroups = Object.keys(groups).map(korean => ({
+                korean: korean,
+                words: groups[korean]
+            }));
+            currentGroupIndex = 0;
+            switchToView('synonym-group-view');
+            updateSynonymGroupView();
+            closeCategoryMenu();
+        }
+
+        // 유의어 그룹핑 뷰 업데이트
+        function updateSynonymGroupView() {
+            if (currentGroupIndex >= sessionGroups.length) {
+                renderCompletionView();
+                return;
+            }
+            
+            checkAnswerBtn.disabled = false;
+            generateExampleBtn.disabled = true;
+            const currentGroup = sessionGroups[currentGroupIndex];
+            koreanDefinitionEl.textContent = currentGroup.korean;
+            feedbackMessageEl.innerHTML = '';
+            
+            const correctWords = currentGroup.words;
+            const allWordsInAllGroups = Object.values(allKoreanWords).flatMap(group => group);
+            
+            let allWords = [...correctWords];
+            const numWordsInGroup = correctWords.length;
+            const minDistractors = 4;
+            const maxDistractors = 6;
+
+            const numDistractors = Math.floor(Math.random() * (maxDistractors - minDistractors + 1)) + minDistractors;
+            
+            const potentialDistractors = allWordsInAllGroups.filter(word => !correctWords.includes(word));
+            
+            const shuffledDistractors = potentialDistractors.sort(() => Math.random() - 0.5);
+            
+            allWords = [...allWords, ...shuffledDistractors.slice(0, numDistractors)];
+            
+            // 보기의 총 개수가 짝수가 되도록 필요하면 더미 추가
+            if (allWords.length % 2 !== 0) {
+                allWords.push('');
+            }
+            
+            allWords.sort(() => Math.random() - 0.5);
+
+            wordButtonsContainerEl.innerHTML = allWords.map(word => `
+                <button class="word-button p-4 bg-slate-200 text-slate-800 font-semibold rounded-lg text-center shadow-sm hover:bg-slate-300 ${word === '' ? 'invisible cursor-default' : ''}" data-word="${word}" ${word === '' ? 'disabled' : ''}>
+                    ${word}
+                </button>
+            `).join('');
+
+            document.querySelectorAll('.word-button:not(.invisible)').forEach(button => {
+                button.addEventListener('click', () => {
+                    button.classList.toggle('selected');
+                    // 선택된 버튼이 하나라도 있으면 예문 버튼 활성화
+                    const hasSelection = document.querySelector('.word-button.selected') !== null;
+                    generateExampleBtn.disabled = !hasSelection;
+                });
+            });
+
+            progressIndicatorEl.textContent = `${currentGroupIndex + 1} / ${sessionGroups.length}`;
+            learningTitleEl.textContent = `${currentChapter} - ${currentCategory}`;
+            
+            // 이전/다음 버튼 활성화/비활성화
+            prevBtn.disabled = currentGroupIndex === 0;
+            nextBtn.disabled = currentGroupIndex >= sessionGroups.length - 1;
+        }
+        
+        // 이전 그룹으로 이동
+        function showPrevGroup() {
+            if (currentGroupIndex > 0) {
+                currentGroupIndex--;
+                updateSynonymGroupView();
+            }
+        }
+        
+        // 다음 그룹으로 이동
+        function showNextGroup() {
+            if (currentGroupIndex < sessionGroups.length - 1) {
+                currentGroupIndex++;
+                updateSynonymGroupView();
+            }
+        }
+
+        // 정답 확인
+        function checkAnswer() {
+            const currentGroup = sessionGroups[currentGroupIndex];
+            const correctWords = new Set(currentGroup.words);
+            const selectedButtons = document.querySelectorAll('.word-button.selected');
+            const selectedWords = new Set(Array.from(selectedButtons).map(btn => btn.dataset.word));
+            
+            let isCorrect = true;
+            // 오답을 선택했거나, 정답을 다 고르지 않았을 경우
+            if ([...selectedWords].some(word => !correctWords.has(word)) || correctWords.size !== selectedWords.size) {
+                 isCorrect = false;
+            }
+
+            let incorrectWords = [];
+            
+            document.querySelectorAll('.word-button:not(.invisible)').forEach(button => {
+                const word = button.dataset.word;
+                button.classList.remove('selected');
+                button.disabled = true;
+
+                if (correctWords.has(word)) {
+                    if (selectedWords.has(word)) {
+                        button.classList.add('correct');
+                    } else {
+                        // 선택되지 않은 정답 단어
+                        button.classList.add('missed-correct');
+                    }
+                } else if (selectedWords.has(word)) {
+                    button.classList.add('incorrect');
+                    incorrectWords.push(word);
+                }
+            });
+            
+            let feedbackHtml = '';
+            if (isCorrect) {
+                feedbackHtml = '<p class="text-green-600">정답입니다! 👏</p>';
+            } else {
+                feedbackHtml = '<p class="text-red-600">아쉽지만 틀렸습니다. 정답은 초록색, 선택하지 못한 정답은 회색으로 표시됩니다.</p>';
+                if (incorrectWords.length > 0) {
+                    feedbackHtml += '<div class="mt-4 p-3 bg-red-100 rounded-lg text-sm text-left">';
+                    feedbackHtml += '<p class="font-bold">선택하신 오답 단어의 뜻:</p>';
+                    incorrectWords.forEach(word => {
+                        feedbackHtml += `<p class="mt-1"><span class="font-bold">${word}</span>: ${englishToKoreanMap[word] || '뜻을 찾을 수 없습니다.'}</p>`;
+                    });
+                    feedbackHtml += '</div>';
+                }
+            }
+            feedbackMessageEl.innerHTML = feedbackHtml;
+            feedbackMessageEl.className = 'text-center font-bold mt-4';
+            checkAnswerBtn.disabled = true;
+            generateExampleBtn.disabled = true; // 정답 확인 후 예문보기 비활성화
+        }
+        
+        // AI 예문 생성
+        async function generateExample() {
+            const selectedButton = document.querySelector('.word-button.selected');
+            if (!selectedButton) {
+                return;
+            }
+            const word = selectedButton.dataset.word;
+            
+            const prompt = `"${word}" 라는 단어에 대한 예문을 만들어주세요. 예문은 한국어와 영어 모두 제공해야 합니다. JSON 형식으로 응답해주세요.`;
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    examples: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                word: { type: "STRING" },
+                                englishSentence: { type: "STRING" },
+                                koreanTranslation: { type: "STRING" }
+                            }
+                        }
+                    }
+                }
+            };
+            
+            showLoading(aiExampleContent);
+            openExampleModal(word);
+            const data = await callGemini(prompt, schema);
+            
+            if (data && data.examples) {
+                let htmlContent = '';
+                data.examples.forEach(ex => {
+                    htmlContent += `
+                        <div class="mb-4 last:mb-0 p-3 bg-gray-100 rounded-lg shadow-sm">
+                            <p class="font-bold text-slate-800 text-lg">${ex.word}</p>
+                            <p class="text-slate-700 mt-1">${ex.englishSentence}</p>
+                            <p class="text-sm text-slate-500 mt-1">${ex.koreanTranslation}</p>
+                        </div>
+                    `;
+                });
+                aiExampleContent.innerHTML = htmlContent;
+            } else {
+                aiExampleContent.innerHTML = `<p class="text-red-500 text-center">예문 생성 실패.</p>`;
+            }
+        }
+        
+        // 랜덤 오답 단어 생성 헬퍼 함수
+        function getRandomDistractors(currentKorean, count) {
+            const currentGroupWords = allKoreanWords[currentKorean];
+            if (!currentGroupWords) return [];
+            
+            const allOtherWords = Object.values(allKoreanWords).flatMap(group => group).filter(word => !currentGroupWords.includes(word));
+            
+            const shuffled = allOtherWords.sort(() => Math.random() - 0.5);
+            return shuffled.slice(0, count);
+        }
+
+        // --- API & View Functions ---
+        function showLoading(container) { container.innerHTML = '<div class="flex justify-center items-center h-20"><div class="spinner"></div></div>'; }
+
+        async function callGemini(prompt, schema) {
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
+            
+            let retryCount = 0;
+            const maxRetries = 3;
+            const baseDelay = 1000;
+
+            while (retryCount < maxRetries) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 429) {
+                        const delay = baseDelay * Math.pow(2, retryCount);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        retryCount++;
+                        continue;
+                    }
+
+                    if (!response.ok) throw new Error(`API 요청 실패: ${response.status}`);
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        const parsedJson = JSON.parse(text);
+                        return parsedJson;
+                    } else {
+                        throw new Error("API로부터 유효한 응답을 받지 못했습니다.");
+                    }
+                } catch (error) {
+                    console.error("Gemini API 호출 오류:", error);
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function switchToView(viewId) {
+            ['synonym-group-view', 'quiz-view', 'completion-view'].forEach(id => {
+                document.getElementById(id).style.display = (id === viewId) ? 'block' : 'none';
+            });
+        }
+        
+        function renderCompletionView() {
+            switchToView('completion-view');
+            document.getElementById('completion-view').innerHTML = `
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 mb-4">학습 완료!</h2>
+                    <p class="text-slate-600 mb-6">수고하셨습니다. 모든 단어 그룹을 학습했습니다.</p>
+                    <div class="flex flex-col gap-4 w-full">
+                        <button id="restart-all-btn" class="w-full px-6 py-3 bg-slate-700 text-white font-semibold rounded-lg shadow-md hover:bg-slate-800 transition">다시 학습</button>
+                        <button id="back-to-menu-btn" class="w-full px-6 py-3 bg-slate-400 text-white font-semibold rounded-lg shadow-md hover:bg-slate-500 transition">메뉴로 돌아가기</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('restart-all-btn').addEventListener('click', () => startSynonymSession(currentChapter, currentCategory));
+            document.getElementById('back-to-menu-btn').addEventListener('click', openMenu);
+        }
+
+        // --- Menu Functions ---
+        function openMenu() {
+            chapterMenuModal.classList.remove('hidden');
+            categoryMenuModal.classList.add('hidden');
+            synonymGroupViewEl.classList.add('hidden');
+            learningTitleEl.textContent = "챕터와 카테고리를 선택하세요.";
+        }
+        function closeMenu() { chapterMenuModal.classList.add('hidden'); }
+        function openCategoryMenu(chapter) {
+            currentChapter = chapter;
+            categoryModalTitleEl.textContent = chapter;
+            chapterMenuModal.classList.add('hidden');
+            categoryMenuModal.classList.remove('hidden');
+            renderCategoryList(chapter);
+        }
+        function closeCategoryMenu() { categoryMenuModal.classList.add('hidden'); }
+        function renderCategoryList(chapter) {
+            categoryListEl.innerHTML = '';
+            const categories = allChapterData[chapter];
+            if (categories) {
+                for (const categoryName in categories) {
+                    const button = document.createElement('button');
+                    button.textContent = categoryName;
+                    button.className = `p-3 bg-slate-100 rounded-lg font-semibold text-slate-700 hover:bg-slate-200 transition`;
+                    button.addEventListener('click', () => startSynonymSession(chapter, categoryName));
+                    categoryListEl.appendChild(button);
+                }
+            }
+        }
+        
+        function openExampleModal(word) {
+            exampleModalTitleEl.textContent = `단어 예문 보기: ${word}`;
+            aiExampleModal.classList.remove('hidden');
+        }
+        function closeExampleModal() {
+            aiExampleModal.classList.add('hidden');
+            aiExampleContent.innerHTML = '';
+        }
+
+        // Event Listeners
+        menuBtn.addEventListener('click', openMenu);
+        closeMenuBtn.addEventListener('click', closeMenu);
+        closeCategoryMenuBtn.addEventListener('click', () => openMenu());
+        closeExampleModalBtn.addEventListener('click', closeExampleModal);
+        
+        // 챕터 버튼 이벤트 리스너 추가 (25개)
+        for(let i = 1; i <= 25; i++) {
+            const chapterBtn = document.getElementById(`chapter-${i}-btn`);
+            if (chapterBtn) {
+                chapterBtn.addEventListener('click', () => openCategoryMenu(`CHAPTER ${String(i).padStart(2, '0')}`));
+            }
+        }
+
+        generateExampleBtn.addEventListener('click', () => {
+            const selectedButton = document.querySelector('.word-button.selected');
+            if (selectedButton) {
+                generateExample(selectedButton.dataset.word);
+            }
+        });
+        
+        checkAnswerBtn.addEventListener('click', checkAnswer);
+        prevBtn.addEventListener('click', showPrevGroup);
+        nextBtn.addEventListener('click', showNextGroup);
+
+        // 초기 로드
+        openMenu();
+    </script>
+</body>
+</html>
