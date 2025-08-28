@@ -2336,12 +2336,13 @@
                         startNewSession(unknownWords, true);
                     });
                     // 전체 단어 다시 학습 (기록 초기화)
-                    document.getElementById('restart-all-btn').addEventListener('click', () => {
-                        delete chapterStatuses[currentChapter];
-                        localStorage.setItem('chapterStatuses', JSON.stringify(chapterStatuses));
-                        localStorage.removeItem(`lastIndex_${currentChapter}`);
-                        startNewSession(currentChapter);
-                    });
+                   document.getElementById('restart-all-btn').addEventListener('click', () => {
+    // 챕터 상태와 마지막 학습 위치를 모두 제거합니다.
+    delete chapterStatuses[currentChapter];
+    localStorage.removeItem(`lastIndex_${currentChapter}`);
+    localStorage.setItem('chapterStatuses', JSON.stringify(chapterStatuses));
+    startNewSession(currentChapter);
+});
                     document.getElementById('back-to-menu-btn').addEventListener('click', openMenu);
                 }
     // 단어 분류 (아는 단어 / 모르는 단어)
@@ -2548,6 +2549,12 @@
     menuBtn.addEventListener('click', openMenu);
     closeMenuBtn.addEventListener('click', closeMenu);
 
+window.addEventListener('beforeunload', () => {
+    localStorage.setItem('chapterStatuses', JSON.stringify(chapterStatuses));
+    localStorage.setItem('lastChapter', currentChapter);
+    localStorage.setItem(`lastIndex_${currentChapter}`, currentCardIndex);
+});
+        
     // Initial load: 앱 시작 시 마지막으로 학습했던 챕터 또는 챕터 1 로드
     const lastChapter = parseInt(localStorage.getItem('lastChapter')) || 1;
     startNewSession(lastChapter);
