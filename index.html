@@ -150,6 +150,7 @@
                 <button class="v-level-button" data-level="101">V101</button>
                 <button class="v-level-button" data-level="201">V201</button>
                 <button class="v-level-button" data-level="301">V301</button>
+                <button class="v-level-button" data-level="301_1">V301-1</button>
                 <button class="v-level-button" data-level="401">V401</button>
             </div>
             <button id="close-v-level-menu-btn" class="close-modal-btn">&times;</button>
@@ -188,17 +189,25 @@
                         window.location.href = `word_list_v201.html`;
                     } else if (selectedLevel === '301') {
                         window.location.href = `word_list_v301.html`;
+                    // V301_1 로직 추가
+                    } else if (selectedLevel === '301_1') { 
+                        window.location.href = `word_list_v301_1.html`;
                     }
                     else {
                         alert(`V${selectedLevel} 단어장 파일은 아직 준비되지 않았습니다.`);
                     }
                 } else if (selectedMode === 'quiz') {
                     if (selectedLevel === '101') {
-                         window.location.href = `word_quiz_v101.html`;
+                        window.location.href = `word_quiz_v101.html`;
                     } else if (selectedLevel === '201') {
                         window.location.href = `word_quiz_v201.html`;
                     } else if (selectedLevel === '301') {
                         window.location.href = `word_quiz_v301.html`;
+                    // V301_1 로직 추가 (quiz 파일이 있다면)
+                    } else if (selectedLevel === '301_1') { 
+                        // word_quiz_v301_1.html로 연결하거나, 파일이 없다고 알립니다.
+                        // 현재 word_quiz_v301_1.html에 대한 정보가 없어, 파일이 없다고 알리도록 설정합니다.
+                        alert(`V${selectedLevel} 단어 시험 파일은 아직 준비되지 않았습니다.`);
                     }
                     else {
                         alert(`V${selectedLevel} 단어 시험 파일은 아직 준비되지 않았습니다.`);
