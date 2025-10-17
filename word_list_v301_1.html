@@ -98,9 +98,7 @@
 </div>
         <p id="chapter-title" class="text-center text-slate-600 mb-6">Chapter 1</p>
 
-        <!-- 메인 컨테이너 -->
         <div id="main-container">
-            <!-- 플래시카드 뷰 -->
             <div id="flashcard-view">
                 <div id="progress-indicator" class="text-center text-slate-500 mb-2 font-bold text-lg"></div>
                 <div class="perspective-1000">
@@ -115,26 +113,21 @@
                                 </div>
                     </div>
                 </div>
-                            <!-- 아는/모르는 단어 버튼 -->
-                <div id="classification-buttons" class="flex justify-center gap-4 mt-4">
+                            <div id="classification-buttons" class="flex justify-center gap-4 mt-4">
                     <button id="mark-unknown-btn" class="w-1/2 py-3 bg-amber-500 text-white font-semibold rounded-lg shadow-md hover:bg-amber-600 transition">🤔 모르는 단어</button>
                     <button id="mark-known-btn" class="w-1/2 py-3 bg-teal-500 text-white font-semibold rounded-lg shadow-md hover:bg-teal-600 transition">😄 아는 단어</button>
                 </div>
             </div>
-            <!-- 퀴즈 뷰 -->
             <div id="quiz-view" class="hidden w-full h-auto bg-white rounded-2xl shadow-lg p-6"></div>
-            <!-- 완료 뷰 -->
             <div id="completion-view" class="hidden w-full h-64 bg-white rounded-2xl shadow-lg p-8 text-center flex flex-col justify-center items-center">
             </div>
         </div>
 
-        <!-- 컨트롤 버튼 -->
         <div id="controls" class="flex justify-between items-center mt-6">
             <button id="prev-btn" class="px-6 py-3 bg-white text-slate-700 font-semibold rounded-lg shadow-md hover:bg-slate-200 transition disabled:opacity-50">이전</button>
             <button id="next-btn" class="px-6 py-3 bg-white text-slate-700 font-semibold rounded-lg shadow-md hover:bg-slate-200 transition">다음</button>
         </div>
 
-        <!-- AI 기능 & 기타 기능 -->
         <div id="extra-features">
             <div class="mt-6 p-4 border-t-2 border-slate-200">
                     <div id="ai-buttons" class="flex justify-center gap-4">
@@ -149,13 +142,11 @@
         </div>
     </div>
 
-    <!-- 챕터 선택 메뉴 모달 -->
     <div id="chapter-menu-modal" class="modal hidden">
         <div class="modal-content">
             <h2 class="text-2xl font-bold text-center mb-6">챕터 선택</h2>
             <div id="chapter-list" class="grid grid-cols-4 gap-3">
-                <!-- 챕터 버튼들이 여기에 동적으로 생성됩니다. -->
-            </div>
+                </div>
             <button id="close-menu-btn" class="absolute top-4 right-4 text-xl font-bold text-slate-500 hover:text-slate-700">&times;</button>
         </div>
     </div>
@@ -529,7 +520,7 @@
 "냉정한; 침착한": ["equable", "tranquil", "placid", "composed", "poised", "imperturbable", "sedate", "impassive", "serene", "staid"],
 "냉정, 침착": ["equanimity", "sedateness", "composure", "poise", "impassivity", "imperturbability", "self-possession", "staidness", "aplomb"],
 "진정시키다": ["settle", "calm", "pacify", "sedate", "soothe", "assuage", "allay", "lull", "compose"],
-"동요시키다": ["fluctuate", "agitate", "ruffle", "disquiet", "disturb", "discombobulate", "discompose", "disconcert", "perturb", "faze", "roil"],
+"동요시키다": ["fluctuate", "agitate", "ruffle", "disquiet", "disturb", "discombobulate", "discompose", "disconcert", "perturb", "faze","roil"],
 "단호하게 결심하다": ["stand firm", "resolve firmly", "decisive", "resolute"],
 "망설이다, 머뭇거리다": ["oscillate", "vacillate", "falter", "linger", "scruple"]
 },
@@ -769,7 +760,7 @@
 "후천적인": ["learned", "acquired", "experimental", "blank slate", "tabula rasa"]
 }
 }
-};
+    };
 
     // Helper function to flatten nested chapters for flashcard use
     function getFlattenedWords(chapters) {
@@ -808,7 +799,11 @@
     let sessionWords = [];
     // 챕터 번호를 키 값에 맞게 조정 (1부터 시작)
     let currentChapter = 1; 
-    let chapterStatuses = JSON.parse(localStorage.getItem('chapterStatuses')) || {};
+    
+    // ⭐ [V-LEVEL-FIX] 1. 파일의 고유 레벨 ID를 정의합니다.
+    const V_LEVEL_ID = 'V301_1';
+    // ⭐ [V-LEVEL-FIX] 2. 레벨 ID를 사용하여 상태를 불러옵니다.
+    let chapterStatuses = JSON.parse(localStorage.getItem(`chapterStatuses_${V_LEVEL_ID}`)) || {};
 
     // DOM Elements
     const flashcardEl = document.getElementById('flashcard');
@@ -849,7 +844,8 @@
             chapterStatuses[currentChapter] = {};
         }
         chapterStatuses[currentChapter][word.english] = status;
-        localStorage.setItem('chapterStatuses', JSON.stringify(chapterStatuses));
+        // ⭐ [V-LEVEL-FIX] 3. 레벨 ID를 사용하여 상태를 저장합니다.
+        localStorage.setItem(`chapterStatuses_${V_LEVEL_ID}`, JSON.stringify(chapterStatuses));
     }
 
     // 로컬 스토리지에서 단어 상태 불러와서 sessionWords에 적용
@@ -869,7 +865,8 @@
 function startNewSession(wordsToStudy, isReview = false) {
     if (typeof wordsToStudy === 'number') {
         currentChapter = wordsToStudy;
-        localStorage.setItem('lastChapter', currentChapter);
+        // ⭐ [V-LEVEL-FIX] 4. 레벨 ID를 사용하여 마지막 챕터를 저장합니다.
+        localStorage.setItem(`lastChapter_${V_LEVEL_ID}`, currentChapter);
         const chapterData = finalAllChapters[currentChapter];
         if (!chapterData) {
             const messageBox = document.createElement('div');
@@ -884,7 +881,8 @@ function startNewSession(wordsToStudy, isReview = false) {
         sessionWords = chapterData.map(word => ({ ...word, status: 'unseen' }));
         loadWordStatus();
 
-        const lastIndex = parseInt(localStorage.getItem(`lastIndex_${currentChapter}`)) || 0;
+        // ⭐ [V-LEVEL-FIX] 5. 레벨 ID를 사용하여 마지막 학습 위치를 불러옵니다.
+        const lastIndex = parseInt(localStorage.getItem(`lastIndex_${V_LEVEL_ID}_${currentChapter}`)) || 0;
         currentCardIndex = Math.min(lastIndex, sessionWords.length - 1);
 
         if (sessionWords.length === 0) { // 단어가 없는 경우
@@ -937,7 +935,8 @@ function startNewSession(wordsToStudy, isReview = false) {
 
                 // 마지막 학습 위치를 저장 (모르는 단어 복습 모드 제외)
                 if (chapterTitleEl.textContent.startsWith('Chapter')) {
-                    localStorage.setItem(`lastIndex_${currentChapter}`, currentCardIndex);
+                    // ⭐ [V-LEVEL-FIX] 6. 레벨 ID를 사용하여 현재 인덱스를 저장합니다.
+                    localStorage.setItem(`lastIndex_${V_LEVEL_ID}_${currentChapter}`, currentCardIndex);
                 }
             }
 
@@ -971,8 +970,9 @@ function startNewSession(wordsToStudy, isReview = false) {
                    document.getElementById('restart-all-btn').addEventListener('click', () => {
     // 챕터 상태와 마지막 학습 위치를 모두 제거합니다.
     delete chapterStatuses[currentChapter];
-    localStorage.removeItem(`lastIndex_${currentChapter}`);
-    localStorage.setItem('chapterStatuses', JSON.stringify(chapterStatuses));
+    // ⭐ [V-LEVEL-FIX] 7. 레벨 ID를 사용하여 관련 기록을 삭제하고 상태를 업데이트합니다.
+    localStorage.removeItem(`lastIndex_${V_LEVEL_ID}_${currentChapter}`);
+    localStorage.setItem(`chapterStatuses_${V_LEVEL_ID}`, JSON.stringify(chapterStatuses));
     startNewSession(currentChapter);
 });
                     document.getElementById('back-to-menu-btn').addEventListener('click', openMenu);
@@ -1182,15 +1182,16 @@ function startNewSession(wordsToStudy, isReview = false) {
     closeMenuBtn.addEventListener('click', closeMenu);
 
 
-    // 추가할 코드: 페이지를 벗어나기 전에 데이터 저장
+    // ⭐ [V-LEVEL-FIX] 8. 페이지를 벗어나기 전에 데이터 저장 (beforeunload 이벤트 리스너 수정)
 window.addEventListener('beforeunload', () => {
-    localStorage.setItem('chapterStatuses', JSON.stringify(chapterStatuses));
-    localStorage.setItem('lastChapter', currentChapter);
-    localStorage.setItem(`lastIndex_${currentChapter}`, currentCardIndex);
+    localStorage.setItem(`chapterStatuses_${V_LEVEL_ID}`, JSON.stringify(chapterStatuses));
+    localStorage.setItem(`lastChapter_${V_LEVEL_ID}`, currentChapter);
+    localStorage.setItem(`lastIndex_${V_LEVEL_ID}_${currentChapter}`, currentCardIndex);
 });
 
     // Initial load: 앱 시작 시 마지막으로 학습했던 챕터 또는 챕터 1 로드
-    const lastChapter = parseInt(localStorage.getItem('lastChapter')) || 1;
+    // ⭐ [V-LEVEL-FIX] 9. 레벨 ID를 사용하여 마지막 학습 챕터를 불러옵니다.
+    const lastChapter = parseInt(localStorage.getItem(`lastChapter_${V_LEVEL_ID}`)) || 1;
     startNewSession(lastChapter);
 </script>
 </body>
