@@ -1214,7 +1214,7 @@ function startNewSession(wordsToStudy, isReview = false) {
     }
 
     // Space : 뜻 보기
-    if (key === ' ') {
+    if (key === 'ArrowUp') {
       prevent();
       flashcardEl.classList.toggle('flipped');
       return;
