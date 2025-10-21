@@ -1213,10 +1213,10 @@ function startNewSession(wordsToStudy, isReview = false) {
       return;
     }
 
-    // Space : 다음 카드
+    // Space : 뜻 보기
     if (key === ' ') {
-      prevent(); // 페이지 스크롤 방지
-      showNextCard();
+      prevent();
+      flashcardEl.classList.toggle('flipped');
       return;
     }
 
