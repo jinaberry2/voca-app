@@ -1214,14 +1214,14 @@ function startNewSession(wordsToStudy, isReview = false) {
     }
 
     // Space : 뜻 보기
-    if (key === 'ArrowUp') {
+    if (key === 'ArrowUp' || key === ' ') {
       prevent();
       flashcardEl.classList.toggle('flipped');
       return;
     }
 
     // S/s : 예문 생성
-    if (key === 's' || key === 'S') {
+    if (key === 's' || key === '?') {
       prevent();
       generateExample();
       return;
