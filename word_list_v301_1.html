@@ -1016,7 +1016,7 @@ function startNewSession(wordsToStudy, isReview = false) {
     async function callGemini(prompt, schema) {
         // API 키는 이 캔버스 환경에서만 작동하므로,
         // 실제 환경에서는 유효한 키를 사용해야 합니다.
-        const apiKey = "AIzaSyBITVwKLHVyxFvN4tvA5Fa6KtaLNpT8nEw";
+        const apiKey = "AIzaSyAk9fc3W0EsQJ5FdtcGQ4Zqt-xrDVJ_-XE";
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
         const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
 
