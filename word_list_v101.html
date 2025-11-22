@@ -2366,7 +2366,7 @@ function startNewSession(wordsToStudy, isReview = false) {
 
     // Gemini API 호출
     async function callGemini(prompt, schema) {
-        const apiKey = "AIzaSyCC69XzzhIPCqqsp-wNfsBxVX3S5CYZNh8";
+        const apiKey = "AIzaSyAk9fc3W0EsQJ5FdtcGQ4Zqt-xrDVJ_-XE";
         const modelName = 'gemini-2.5-flash';
         const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
 
