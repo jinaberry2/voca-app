@@ -2139,11 +2139,17 @@
         ],
     };
 
+    // ... (allChapters 배열 정의가 끝나는 지점)
+    }; // <--- 이 닫는 중괄호 바로 다음부터 시작
+
+    // ⭐ 여기에 아래의 코드를 정확하게 추가해야 합니다.
+    const V_LEVEL_ID = 'V101'; 
     let currentCardIndex = 0;
     let sessionWords = [];
     let currentChapter = 1; // 초기 챕터를 1로 설정
-    let chapterStatuses = JSON.parse(localStorage.getItem('chapterStatuses')) || {};
 
+    // ⭐ 로컬 스토리지 초기화 코드를 V_LEVEL_ID에 맞춰 수정합니다.
+    let chapterStatuses = JSON.parse(localStorage.getItem(`chapterStatuses_${V_LEVEL_ID}`)) || {};
 
     // DOM Elements
     const flashcardEl = document.getElementById('flashcard');
@@ -2366,7 +2372,10 @@ function startNewSession(wordsToStudy, isReview = false) {
 
     // Gemini API 호출
     async function callGemini(prompt, schema) {
+        // API 키는 사용자님의 유효한 키로 교체해야 합니다.
         const apiKey = "AIzaSyAk9fc3W0EsQJ5FdtcGQ4Zqt-xrDVJ_-XE";
+        
+        // ⭐ 수정 완료: 안정적인 모델 이름으로 변경
         const modelName = 'gemini-2.5-flash';
         const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
 
@@ -2381,7 +2390,7 @@ function startNewSession(wordsToStudy, isReview = false) {
             });
 
             if (!response.ok) {
-                // 404 오류가 발생하는 핵심 원인이 이 모델 이름 때문이었습니다.
+                // API 요청 실패 시 에러 코드를 정확하게 확인해야 합니다.
                 throw new Error(`API 요청 실패: ${response.status}`);
             }
 
@@ -2593,8 +2602,10 @@ window.addEventListener('beforeunload', () => {
     localStorage.setItem(`lastIndex_${V_LEVEL_ID}_${currentChapter}`, currentCardIndex);
 });
         
+// ⭐ 아래 코드로 교체해야 합니다. (파일의 맨 마지막 부분)
     // Initial load: 앱 시작 시 마지막으로 학습했던 챕터 또는 챕터 1 로드
-    const lastChapter = parseInt(localStorage.getItem('lastChapter')) || 1;
+    // ⭐ [V-LEVEL-FIX] 9. 레벨 ID를 사용하여 마지막 학습 챕터를 불러옵니다.
+    const lastChapter = parseInt(localStorage.getItem(`lastChapter_${V_LEVEL_ID}`)) || 1; 
     startNewSession(lastChapter);
 </script>
 </body>
