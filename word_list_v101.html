@@ -2503,7 +2503,7 @@ function startNewSession(wordsToStudy, isReview = false) {
     }
 
     // Event Listeners
-    nextBtn.addEventListener('click', showNextCard);
+       nextBtn.addEventListener('click', showNextCard);
     prevBtn.addEventListener('click', showPrevCard);
     shuffleBtn.addEventListener('click', shuffleCards);
     markKnownBtn.addEventListener('click', () => handleClassification('known'));
@@ -2513,12 +2513,81 @@ function startNewSession(wordsToStudy, isReview = false) {
     menuBtn.addEventListener('click', openMenu);
     closeMenuBtn.addEventListener('click', closeMenu);
 
-    // 추가할 코드: 페이지를 벗어나기 전에 데이터 저장
-    window.addEventListener('beforeunload', () => {
-        localStorage.setItem('chapterStatuses', JSON.stringify(chapterStatuses));
-        localStorage.setItem('lastChapter', currentChapter);
-        localStorage.setItem(`lastIndex_${currentChapter}`, currentCardIndex);
-    });
+        (function setupKeyboardShortcuts() {
+  // 현재 플래시카드 뷰인지 확인
+  const isFlashcardView = () =>
+    flashcardViewEl && flashcardViewEl.style.display === 'block';
+
+  window.addEventListener('keydown', (e) => {
+    // 입력 요소에 포커스가 있을 때는 단축키 무시 (예상 확장성)
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+
+    // 키 식별
+    const key = e.key;
+
+    // 플래시카드 뷰에서만 동작하게 제한 (요청된 행동들)
+    if (!isFlashcardView()) {
+      // 퀴즈/완료 화면 등에서는 기본적으로 단축키 무시
+      return;
+    }
+
+    // 기본 동작(스크롤, 브라우저 뒤로가기 등) 방지
+    const prevent = () => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    // ← : 모르는 단어로 분류 후 다음
+    if (key === 'ArrowLeft') {
+      prevent();
+      handleClassification('unknown'); // 내부에서 자동 다음 이동
+      return;
+    }
+
+    // → : 아는 단어로 분류 후 다음
+    if (key === 'ArrowRight') {
+      prevent();
+      handleClassification('known'); // 내부에서 자동 다음 이동
+      return;
+    }
+
+    // ⌫(Backspace) : 이전 카드
+    if (key === 'Backspace') {
+      prevent(); // 브라우저 뒤로가기 방지
+      showPrevCard();
+      return;
+    }
+
+    // Space : 뜻 보기
+    if (key === 'ArrowUp' || key === ' ') {
+      prevent();
+      flashcardEl.classList.toggle('flipped');
+      return;
+    }
+
+    // S/s : 예문 생성
+    if (key === 's' || key === '?') {
+      prevent();
+      generateExample();
+      return;
+    }
+
+    // Q/q : 퀴즈 생성
+    if (key === 'q' || key === 'Q') {
+      prevent();
+      generateQuiz();
+      return;
+    }
+  }, { passive: false });
+})();
+
+    // ⭐ [V-LEVEL-FIX] 8. 페이지를 벗어나기 전에 데이터 저장 (beforeunload 이벤트 리스너 수정)
+window.addEventListener('beforeunload', () => {
+    localStorage.setItem(`chapterStatuses_${V_LEVEL_ID}`, JSON.stringify(chapterStatuses));
+    localStorage.setItem(`lastChapter_${V_LEVEL_ID}`, currentChapter);
+    localStorage.setItem(`lastIndex_${V_LEVEL_ID}_${currentChapter}`, currentCardIndex);
+});
         
     // Initial load: 앱 시작 시 마지막으로 학습했던 챕터 또는 챕터 1 로드
     const lastChapter = parseInt(localStorage.getItem('lastChapter')) || 1;
