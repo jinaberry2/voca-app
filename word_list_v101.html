@@ -2367,17 +2367,21 @@ function startNewSession(wordsToStudy, isReview = false) {
     // Gemini API 호출
     async function callGemini(prompt, schema) {
         const apiKey = "AIzaSyCC69XzzhIPCqqsp-wNfsBxVX3S5CYZNh8";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        const modelName = 'gemini-2.5-flash';
         const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
 
+    
+        const tempUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+
         try {
-            const response = await fetch(apiUrl, {
+            const response = await fetch(`${tempUrl}?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
+                // 404 오류가 발생하는 핵심 원인이 이 모델 이름 때문이었습니다.
                 throw new Error(`API 요청 실패: ${response.status}`);
             }
 
