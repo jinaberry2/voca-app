@@ -203,7 +203,7 @@
     </div>
 
     <script>
-        // 프랑스어 단어 데이터베이스
+        // 프랑스어 단어 데이터베이스 (기존 데이터 유지)
         const allChapters = {
             1: [
                 { french: "nationalité", definition: "n. f. 국적" },
@@ -218,7 +218,7 @@
                 { french: "vivre", definition: "v. 살다 (과거 분사: vécu)" },
                 { french: "étranger(ère)", definition: "a. 외국(인)의, n. 외국인, n. m. 외국" },
                 { french: "carte d'identité", definition: "n. f. 신분증" },
-                { french: "territorie", definition: "n. m. 영토, 국토" },
+                { french: "territoire", definition: "n. m. 영토, 국토" },
                 { french: "dense", definition: "a. (사람이) 조밀한, 밀집한" },
                 { french: "population", definition: "n. f. 인구, 주민, 국민" },
                 { french: "habitant(e)", definition: "n. 주민, 거주자" },
@@ -772,7 +772,7 @@
                 { french: "pourboire", definition: "n. m. 팁" }
             ],
             16: [
-                { french: "maison", definition: "n. m. 집, 주택, 가옥" },
+                { french: "maison", definition: "n. f. 집, 주택, 가옥" },
                 { french: "habiter", definition: "v. 살다" },
                 { french: "appartement", definition: "n. m. 아파트" },
                 { french: "chambre", definition: "n. f. 방, 침실" },
@@ -1105,7 +1105,7 @@
                 { french: "péage", definition: "n. m. (도로, 교량 따위의) 통행료, 톨게이트" },
                 { french: "transport en commun", definition: "n. m. 대중교통" },
                 { french: "arrêt", definition: "n. m. 멈춤, 정지, 정류장" },
-                { french: "déplace", definition: "v. 옮겨 놓다, 이동시키다 (se déplacer v. 움직이다, 이동하다)" },
+                { french: "déplacer", definition: "v. 옮겨 놓다, 이동시키다 (se déplacer v. 움직이다, 이동하다)" },
                 { french: "passage", definition: "n. m. 통행, 통과, 횡단, 통로" },
                 { french: "piéton(ne)", definition: "a. 보행자 전용의, n. 보행자" },
                 { french: "traverser", definition: "v. 횡단하다, 건너다, 가로지르다" },
@@ -1244,7 +1244,7 @@
                 { french: "à l’envers", definition: "à l’envers : 뒤집어서, 반대로, 반대 방향으로" },
                 { french: "à l’heure", definition: "à l’heure : 정시에, 정각에" },
                 { french: "à l’instant", definition: "à l’instant : 당장, 방금, 곧" },
-                { french: "à présent", definition: "à Anthrop : 현재(는), 지금(은)" },
+                { french: "à présent", definition: "à présent : 현재(는), 지금(은)" },
                 { french: "à tout moment", definition: "à tout moment : 끊임없이, 항상" },
                 { french: "à toute vitesse", definition: "à toute vitesse : 전속력으로, 아주 빠르게" },
                 { french: "avec calme", definition: "avec calme : 침착하게, 의연히" },
@@ -1267,11 +1267,13 @@
             ]
         };
 
+        // 고유 식별 레벨 ID 및 전역 변수 설정 (로컬 스토리지 키 충돌 방지)
         const V_LEVEL_ID = 'DELF_B1';
         let currentCardIndex = 0;
         let sessionWords = [];
         let currentChapter = 1;
 
+        // 로컬 스토리지 내 기억 연동부
         let chapterStatuses = JSON.parse(localStorage.getItem(`chapterStatuses_${V_LEVEL_ID}`)) || {};
 
         // DOM Elements
@@ -1285,6 +1287,7 @@
         const chapterTitleEl = document.getElementById('chapter-title');
         const controlsEl = document.getElementById('controls');
         const extraFeaturesEl = document.getElementById('extra-features');
+        const classificationButtonsEl = document.getElementById('classification-buttons');
         
         const prevBtn = document.getElementById('prev-btn');
         const nextBtn = document.getElementById('next-btn');
@@ -1313,14 +1316,17 @@
             }
         });
 
+        // 단어 개별 아는/모르는 상태 로컬 스토리지 동기화 함수
         function saveWordStatus(word, status) {
             if (!chapterStatuses[currentChapter]) {
                 chapterStatuses[currentChapter] = {};
             }
+            // 프랑스어 표기를 고유 키로 매핑
             chapterStatuses[currentChapter][word.french] = status;
             localStorage.setItem(`chapterStatuses_${V_LEVEL_ID}`, JSON.stringify(chapterStatuses));
         }
 
+        // 로컬 스토리지에 기 저장된 단어 기억 매핑 함수
         function loadWordStatus() {
             if (chapterStatuses[currentChapter]) {
                 sessionWords.forEach(word => {
@@ -1331,6 +1337,7 @@
             }
         }
 
+        // 새로운 학습 세션 시작
         function startNewSession(wordsToStudy, isReview = false) {
             if (typeof wordsToStudy === 'number') {
                 currentChapter = wordsToStudy;
@@ -1343,6 +1350,7 @@
                 sessionWords = chapterData.map(word => ({ ...word, status: 'unseen' }));
                 loadWordStatus();
 
+                // 저장된 마지막 학습 인덱스 위치 로드
                 const lastIndex = parseInt(localStorage.getItem(`lastIndex_${V_LEVEL_ID}_${currentChapter}`)) || 0;
                 currentCardIndex = Math.min(lastIndex, sessionWords.length - 1);
                 if(currentCardIndex < 0) currentCardIndex = 0;
@@ -1363,6 +1371,7 @@
             closeMenu();
         }
 
+        // 프랑스어 성별 기호 포맷터
         function formatDefinition(text) {
             if (!text) return "";
             return text
@@ -1371,6 +1380,7 @@
                 .replace(/\b(v\.|a\.)/gi, '<span class="text-slate-500 font-semibold bg-slate-100 px-1 py-0.5 rounded">$1</span>');
         }
 
+        // 카드 및 인디케이터 뷰 동기화 및 마지막 학습 위치 수시 저장
         function updateCard() {
             if (currentCardIndex >= sessionWords.length) {
                 renderCompletionCard();
@@ -1395,11 +1405,13 @@
             aiContentContainerEl.innerHTML = '';
             aiContentContainerEl.classList.add('hidden');
 
+            // 마지막 학습 위치(Index) 로컬 스토리지 임시저장 (복습 모드 제외)
             if (chapterTitleEl.textContent.startsWith('Jour')) {
                 localStorage.setItem(`lastIndex_${V_LEVEL_ID}_${currentChapter}`, currentCardIndex);
             }
         }
 
+        // 학습 완료 화면 렌더러
         function renderCompletionCard() {
             const unknownWords = sessionWords.filter(w => w.status === 'unknown');
             const unknownCount = unknownWords.length;
@@ -1455,10 +1467,11 @@
             document.getElementById('back-to-menu-btn').addEventListener('click', openMenu);
         }
 
+        // 단어 아는/모르는 재분류 판단 로직
         function handleClassification(status) {
             if (currentCardIndex < sessionWords.length) {
                 sessionWords[currentCardIndex].status = status;
-                saveWordStatus(sessionWords[currentCardIndex], status);
+                saveWordStatus(sessionWords[currentCardIndex], status); // 실시간 동기화
                 showNextCard();
             }
         }
@@ -1505,25 +1518,29 @@
             }
         }
 
-        // --- AI API 통신 예문 엔진 (2026년 정식 버전 gemini-2.5-flash 패스로 전면 고정) ---
+       // --- AI API 통신 예문 엔진 ---
         function getSavedApiKey() {
-            return localStorage.getItem('gemini_api_key') || "";
+            // API 키를 코드에 미리 넣어서 시작하도록 수정
+            return "AIzaSyC9D5pBcZ-E5nr9tuwscL-eG0cj3K_jvCU";
         }
 
         async function callGemini(prompt, schema) {
             const apiKey = getSavedApiKey();
             if (!apiKey) {
-                showCustomToast("⚠️ 우측 상단 톱니바퀴를 눌러 발급받으신 Gemini API 키를 저장해 주세요.");
+                showCustomToast("⚠️ 먼저 우측 상단 톱니바퀴를 눌러 Gemini API 키를 저장해 주세요.");
                 openSettings();
                 return null;
             }
 
-            // 구버전 1.5-flash 404 차단을 우회하기 위해 정식 패스인 gemini-2.5-flash로 전면 일치
-            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-            const payload = { 
-                contents: [{ role: "user", parts: [{ text: prompt }] }], 
-                generationConfig: { responseMimeType: "application/json", responseSchema: schema } 
-            };
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+           const payload = {
+    contents: [{
+        role: "user",
+        parts: [{
+            text: prompt
+        }]
+    }]
+};
             
             try {
                 const response = await fetch(apiUrl, { 
@@ -1531,27 +1548,15 @@
                     headers: { 'Content-Type': 'application/json' }, 
                     body: JSON.stringify(payload) 
                 });
-                
-if (!response.ok) {
-    const errorBody = await response.text();
-    console.log("Gemini Error:", errorBody);
-
-    throw new Error(
-        `HTTP ${response.status}\n${errorBody}`
-    );
-}
-                
+                if (!response.ok) throw new Error(`API 호출 실패 (코드: ${response.status})`);
                 const result = await response.json();
                 if (result.candidates && result.candidates.length > 0) {
-                    let text = result.candidates[0].content.parts[0].text;
-                    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                    const text = result.candidates[0].content.parts[0].text;
                     return JSON.parse(text);
-                } else {
-                    throw new Error("API 결과 데이터가 비어있습니다.");
-                }
+                } else throw new Error("API 결과가 없습니다.");
             } catch (error) {
                 console.error("Gemini API 호출 오동작:", error);
-                aiContentContainerEl.innerHTML = `<p class="text-red-500 text-center text-sm font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i> ${error.message}</p>`;
+                aiContentContainerEl.innerHTML = `<p class="text-red-500 text-center text-sm font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i> API 오류: ${error.message}</p>`;
                 return null;
             }
         }
@@ -1610,6 +1615,7 @@ if (!response.ok) {
             }, 3000);
         }
 
+        // --- 모달 제어 핸들러 ---
         function openMenu() {
             chapterMenuModal.classList.remove('hidden');
             renderChapterList();
@@ -1620,7 +1626,7 @@ if (!response.ok) {
         }
 
         function openSettings() {
-            apiKeyInput.value = localStorage.getItem('gemini_api_key') || "";
+            apiKeyInput.value = getSavedApiKey();
             settingsModal.classList.remove('hidden');
         }
 
@@ -1646,6 +1652,7 @@ if (!response.ok) {
             closeSettings();
         });
 
+        // Click Event Listeners
         nextBtn.addEventListener('click', showNextCard);
         prevBtn.addEventListener('click', showPrevCard);
         shuffleBtn.addEventListener('click', shuffleCards);
@@ -1660,14 +1667,15 @@ if (!response.ok) {
         closeSettingsBtn.addEventListener('click', closeSettings);
         closeSettingsX.addEventListener('click', closeSettings);
 
+        // ⌨️ 키보드 화살표 및 백스페이스/스페이스바 단축키 이벤트 바인딩
         (function setupKeyboardShortcuts() {
             const isFlashcardView = () => flashcardViewEl && flashcardViewEl.style.display !== 'none';
 
             window.addEventListener('keydown', (e) => {
                 const tag = (document.activeElement && document.activeElement.tagName) || '';
-                if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+                if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return; // 입력 모드일 땐 단축키 일시 중지
 
-                if (!isFlashcardView()) return;
+                if (!isFlashcardView()) return; // 카드 화면에서만 작동 제한
 
                 const key = e.key;
                 const prevent = () => {
@@ -1675,30 +1683,35 @@ if (!response.ok) {
                     e.stopPropagation();
                 };
 
+                // ← (왼쪽 화살표): 모르는 단어로 판단하고 자동 넘김
                 if (key === 'ArrowLeft') {
                     prevent();
                     handleClassification('unknown');
                     return;
                 }
 
+                // → (오른쪽 화살표): 아는 단어로 판단하고 자동 넘김
                 if (key === 'ArrowRight') {
                     prevent();
                     handleClassification('known');
                     return;
                 }
 
+                // Backspace (백스페이스): 이전 카드로 빽
                 if (key === 'Backspace') {
                     prevent();
                     showPrevCard();
                     return;
                 }
 
+                // Spacebar / ↑ (위쪽 화살표): 플래시카드 뒤집어 뜻 확인
                 if (key === 'ArrowUp' || key === ' ') {
                     prevent();
                     flashcardEl.classList.toggle('flipped');
                     return;
                 }
 
+                // s (키보드 S): AI 프랑스어 예문 자동 호출
                 if (key === 's' || key === 'S') {
                     prevent();
                     generateExample();
@@ -1707,6 +1720,7 @@ if (!response.ok) {
             }, { passive: false });
         })();
 
+        // 윈도우 창을 끄거나 페이지 이탈 전 완벽하게 메모리 적재 및 세이브
         window.addEventListener('beforeunload', () => {
             localStorage.setItem(`chapterStatuses_${V_LEVEL_ID}`, JSON.stringify(chapterStatuses));
             localStorage.setItem(`lastChapter_${V_LEVEL_ID}`, currentChapter);
@@ -1715,6 +1729,7 @@ if (!response.ok) {
             }
         });
 
+        // 앱 구동 즉시 로컬 스토리지에 남아있던 마지막 학습 Jour 로우데이터 로드
         const lastChapter = parseInt(localStorage.getItem(`lastChapter_${V_LEVEL_ID}`)) || 1; 
         startNewSession(lastChapter);
     </script>
