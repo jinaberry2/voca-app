@@ -1492,7 +1492,7 @@
         async function callGemini(prompt, schema) {
             // ⭐ 보완 완료: 직접 2026년 기준 검증된 API 키 주입
             const apiKey = "AIzaSyC9D5pBcZ-E5nr9tuwscL-eG0cj3K_jvCU";
-            const modelName = 'gemini-2.5-flash';
+            const modelName = 'gemini-1.5-flash';
             
             // 안정적인 v1beta 엔드포인트 세팅
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
