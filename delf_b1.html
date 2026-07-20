@@ -1518,9 +1518,10 @@
             }
         }
 
-        // --- AI API 통신 예문 엔진 ---
+       // --- AI API 통신 예문 엔진 ---
         function getSavedApiKey() {
-            return localStorage.getItem('gemini_api_key') || "";
+            // API 키를 코드에 미리 넣어서 시작하도록 수정
+            return "AIzaSyC9D5pBcZ-E5nr9tuwscL-eG0cj3K_jvCU";
         }
 
         async function callGemini(prompt, schema) {
