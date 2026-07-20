@@ -196,7 +196,7 @@
                 { french: "étranger(ère)", definition: "a. 외국(인)의, n. 외국인, n. m. 외국" },
                 { french: "carte d'identité", definition: "n. f. 신분증" },
                 { french: "territoire", definition: "n. m. 영토, 국토" },
-                { french: "dense", definition: "a. (사람이) 조밀한,밀집한" },
+                { french: "dense", definition: "a. (사람이) 조밀한, 밀집한" },
                 { french: "population", definition: "n. f. 인구, 주민, 국민" },
                 { french: "habitant(e)", definition: "n. 주민, 거주자" },
                 { french: "langue", definition: "n. f. 혀, 언어, 말" },
@@ -923,7 +923,7 @@
                 { french: "expiration", definition: "n. f. 만기, 만료" },
                 { french: "janvier", definition: "n. m. 1월" },
                 { french: "mars", definition: "n. m. 3월" },
-                { french: "rérecent(e)", definition: "a. 최근의, 새로운" },
+                { french: "récent(e)", definition: "a. 최근의, 새로운" },
                 { french: "passé(e)", definition: "a. 과거의, 지난, n. m. 과거" },
                 { french: "mémorable", definition: "a. 기념해야 할, 잊기 어려운" },
                 { french: "événement (évènement)", definition: "n. m. 사건, 일어난 일, 행사" },
@@ -1202,8 +1202,8 @@
                 { french: "mettre en ligne / à jour", definition: "mettre en ligne (업로드하다), mettre à jour (업그레이드하다, 업데이트하다)" },
                 { french: "porter plainte contre + 사람", definition: "porter plainte contre + 사람 : ~을(를) 고소하다" },
                 { french: "rendre compte de + 명사 (à 사람)", definition: "rendre compte de + 명사 (à 사람) : (~에게) ~을(를) 보고하다" },
-                { french: "sn. m. 거주(지), 주재, 관저e rendre compte", definition: "se rendre compte : 깨닫다, ~을(를) 이해하다, 납득하다" },
-                { french: "rendering service à + 사람", definition: "rendre service à + 사람 : ~에게 도움을 주다" },
+                { french: "se rendre compte", definition: "se rendre compte : 깨닫다, ~을(를) 이해하다, 납득하다" },
+                { french: "rendre service à + 사람", definition: "rendre service à + 사람 : ~에게 도움을 주다" },
                 { french: "tomber malade", definition: "tomber malade : 병들다, 병나다" },
                 { french: "tomber amoureux(se) de + 명사", definition: "tomber amoureux(se) de + 명사 : ~에게 사랑에 빠지다" },
                 { french: "en général", definition: "en général : 일반적으로" },
@@ -1257,7 +1257,7 @@
         const flashcardEl = document.getElementById('flashcard');
         const cardFrontTextEl = document.getElementById('card-front-text');
         const cardBackTextEl = document.getElementById('card-back-text');
-  00000000const flashcardViewEl = document.getElementById('flashcard-view');
+        const flashcardViewEl = document.getElementById('flashcard-view');
         const completionViewEl = document.getElementById('completion-view');
         const progressIndicatorEl = document.getElementById('progress-indicator');
         const progressBarEl = document.getElementById('progress-bar');
@@ -1399,7 +1399,7 @@
                             <span class="block text-xs font-semibold text-teal-600 mb-1">아는 단어</span>
                             <span class="text-xl font-bold text-teal-700">${knownCount}개</span>
                         </div>
-  ’                    <div class="bg-amber-50 border border-amber-100 p-3 rounded-2xl">
+                        <div class="bg-amber-50 border border-amber-100 p-3 rounded-2xl">
                             <span class="block text-xs font-semibold text-amber-600 mb-1">모르는 단어</span>
                             <span class="text-xl font-bold text-amber-700">${unknownCount}개</span>
                         </div>
@@ -1423,7 +1423,7 @@
             progressBarEl.style.width = '100%';
 
             const reviewBtn = document.getElementById('review-unknown-btn');
-max_h-      reviewBtn.disabled = unknownCount === 0;
+            reviewBtn.disabled = unknownCount === 0;
             
             reviewBtn.addEventListener('click', () => startNewSession(unknownWords, true));
             
@@ -1475,7 +1475,7 @@ max_h-      reviewBtn.disabled = unknownCount === 0;
                 completionViewEl.classList.add('hidden');
                 
                 controlsEl.style.display = 'flex';
- 00000000      extraFeaturesEl.style.display = 'block';
+                extraFeaturesEl.style.display = 'block';
             } else {
                 flashcardViewEl.style.display = 'none';
                 flashcardViewEl.classList.add('hidden');
@@ -1487,13 +1487,11 @@ max_h-      reviewBtn.disabled = unknownCount === 0;
             }
         }
 
-        // --- AI API 통신 예문 엔진 ( getSavedApiKey 제거 및 403 에러 완벽 대처 ) ---
+        // --- AI API 통신 예문 엔진 ---
         async function callGemini(prompt, schema) {
-            // ⭐ 보완 완료: 직접 2026년 기준 검증된 API 키 주입
             const apiKey = "AIzaSyC9D5pBcZ-E5nr9tuwscL-eG0cj3K_jvCU";
             const modelName = 'gemini-1.5-flash';
             
-            // 안정적인 v1beta 엔드포인트 세팅
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
             const payload = { 
                 contents: [{ role: "user", parts: [{ text: prompt }] }], 
@@ -1515,7 +1513,7 @@ max_h-      reviewBtn.disabled = unknownCount === 0;
             } catch (error) {
                 console.error("Gemini API 호출 오류:", error);
                 aiContentContainerEl.innerHTML = `<p class="text-red-500 text-center text-sm font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i> API 오류: ${error.message}</p>`;
-              00000000return null;
+                return null;
             }
         }
 
@@ -1562,7 +1560,7 @@ max_h-      reviewBtn.disabled = unknownCount === 0;
             toast.innerHTML = `<i class="fa-solid fa-circle-info text-blue-400"></i> ${text}`;
             document.body.appendChild(toast);
             
-           -translate-y-2 setTimeout(() => {
+            setTimeout(() => {
                 toast.classList.remove('opacity-0', 'translate-y-2');
                 toast.classList.add('opacity-100', 'translate-y-0');
             }, 10);
@@ -1610,9 +1608,9 @@ max_h-      reviewBtn.disabled = unknownCount === 0;
 
             window.addEventListener('keydown', (e) => {
                 const tag = (document.activeElement && document.activeElement.tagName) || '';
-                if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return; // 입력 모드일 땐 단축키 일시 중지
+                if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return; 
 
-                if (!isFlashcardView()) return; // 카드 화면에서만 작동 제한
+                if (!isFlashcardView()) return; 
 
                 const key = e.key;
                 const prevent = () => {
@@ -1620,40 +1618,11 @@ max_h-      reviewBtn.disabled = unknownCount === 0;
                     e.stopPropagation();
                 };
 
-                // ← (왼쪽 화살표): 모르는 단어로 판단하고 자동 넘김
-                if (key === 'ArrowLeft') {
-                    prevent();
-                    handleClassification('unknown');
-                    return;
-                }
-
-                // → (오른쪽 화살표): 아는 단어로 판단하고 자동 넘김
-                if (key === 'ArrowRight') {
-                    prevent();
-                    handleClassification('known');
-                    return;
-                }
-
-                // Backspace (백스페이스): 이전 카드로 빽
-                if (key === 'Backspace') {
-                    prevent();
-                    showPrevCard();
-                    return;
-                }
-
-                // Spacebar / ↑ (위쪽 화살표): 플래시카드 뒤집어 뜻 확인
-                if (key === 'ArrowUp' || key === ' ') {
-                    prevent();
-                    flashcardEl.classList.toggle('flipped');
-                    return;
-                }
-
-                // s (키보드 S): AI 프랑스어 예문 자동 호출
-                if (key === 's' || key === 'S') {
-                    prevent();
-                    generateExample();
-                    return;
-                }
+                if (key === 'ArrowLeft') { prevent(); handleClassification('unknown'); return; }
+                if (key === 'ArrowRight') { prevent(); handleClassification('known'); return; }
+                if (key === 'Backspace') { prevent(); showPrevCard(); return; }
+                if (key === 'ArrowUp' || key === ' ') { prevent(); flashcardEl.classList.toggle('flipped'); return; }
+                if (key === 's' || key === 'S') { prevent(); generateExample(); return; }
             }, { passive: false });
         })();
 
@@ -1665,7 +1634,7 @@ max_h-      reviewBtn.disabled = unknownCount === 0;
             }
         });
 
-        // 앱 구동 즉시 로컬 스토리지에 남아있던 마지막 학습 Jour 로우데이터 로드
+        // 앱 구동 로드
         const lastChapter = parseInt(localStorage.getItem(`lastChapter_${V_LEVEL_ID}`)) || 1; 
         startNewSession(lastChapter);
     </script>
