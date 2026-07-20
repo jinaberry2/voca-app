@@ -474,7 +474,7 @@
                 { french: "allumé(e)", definition: "a. 켜진" },
                 { french: "message", definition: "n. m. 메시지" },
                 { french: "marcher", definition: "v. 걷다, 작동하다" },
-                { french: "site Internet", definition: "n. m. 인터넷 사이트" },
+                { french: "site Internet", definition: "n. m. 인터넷 사이체" },
                 { french: "piratage", definition: "n. m. 해적 행위, 불법 복제" },
                 { french: "fraude informatique", definition: "n. f. 해킹, 컴퓨터 범죄" },
                 { french: "courrier électronique", definition: "n. m. 전자 우편" },
@@ -772,7 +772,7 @@
                 { french: "pourboire", definition: "n. m. 팁" }
             ],
             16: [
-                { french: "maison", definition: "n. f. 집, 주택, 가옥" },
+                { french: "maison", definition: "n. m. 집, 주택, 가옥" },
                 { french: "habiter", definition: "v. 살다" },
                 { french: "appartement", definition: "n. m. 아파트" },
                 { french: "chambre", definition: "n. f. 방, 침실" },
@@ -1505,21 +1505,21 @@
             }
         }
 
-        // --- AI API 통신 예문 엔진 (수정 완료) ---
+        // --- AI API 통신 예문 엔진 (최신 엔드포인트 전면 개편) ---
         function getSavedApiKey() {
-            return localStorage.getItem('gemini_api_key') || "AQ.Ab8RN6LsnQXOYFlauWxjzfw-cWDWr31smwtD6tmckn_nCStVMQ";
+            return localStorage.getItem('gemini_api_key') || "";
         }
 
         async function callGemini(prompt, schema) {
             const apiKey = getSavedApiKey();
             if (!apiKey) {
-                showCustomToast("⚠️ 우측 상단 톱니바퀴를 눌러 올바른 Gemini API 키를 저장해 주세요.");
+                showCustomToast("⚠️ 우측 상단 톱니바퀴를 눌러 발급받으신 Gemini API 키를 저장해 주세요.");
                 openSettings();
                 return null;
             }
 
-            // 호환 모델 주소로 최종 변경
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            // Google AI Studio 최신 통합 모델 규격 주소인 v1beta의 gemini-2.5-flash 정식 패스로 일치시킴
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const payload = { 
                 contents: [{ role: "user", parts: [{ text: prompt }] }], 
                 generationConfig: { responseMimeType: "application/json", responseSchema: schema } 
@@ -1532,8 +1532,21 @@
                     body: JSON.stringify(payload) 
                 });
                 
+                // 만약 신규 발급 키 종류에 따라 v1beta 주소 매칭이 간혹 밀릴 경우 하위 호환을 위한 예외 처리 세팅
+                if (response.status === 404) {
+                    const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                    const fallbackResponse = await fetch(fallbackUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!fallbackResponse.ok) throw new Error(`API 호환 호출 실패 (코드: ${fallbackResponse.status})`);
+                    const fallbackResult = await fallbackResponse.json();
+                    return JSON.parse(fallbackResult.candidates[0].content.parts[0].text);
+                }
+
                 if (!response.ok) {
-                    throw new Error(`API 오류 (코드: ${response.status}). 설정에서 새로운 API 키로 교체해 보세요.`);
+                    throw new Error(`API 오류 (코드: ${response.status}). 키 권한이 부족하거나 잘못 입력되었을 수 있습니다.`);
                 }
                 
                 const result = await response.json();
@@ -1545,7 +1558,7 @@
                 }
             } catch (error) {
                 console.error("Gemini API 호출 오동작:", error);
-                aiContentContainerEl.innerHTML = `<p class="text-red-500 text-center text-sm font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i> API 오류: ${error.message}</p>`;
+                aiContentContainerEl.innerHTML = `<p class="text-red-500 text-center text-sm font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i> ${error.message}</p>`;
                 return null;
             }
         }
