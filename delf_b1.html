@@ -1518,44 +1518,41 @@
             }
         }
 
-       // --- AI API 통신 예문 엔진 ---
-        function getSavedApiKey() {
-            // API 키를 코드에 미리 넣어서 시작하도록 수정
-            return "AIzaSyC9D5pBcZ-E5nr9tuwscL-eG0cj3K_jvCU";
-        }
+         // Gemini API 호출
+    async function callGemini(prompt, schema) {
+        // API 키는 사용자님의 유효한 키로 교체해야 합니다.
+        const apiKey = "AIzaSyC9D5pBcZ-E5nr9tuwscL-eG0cj3K_jvCU";
+        
+        // ⭐ 수정 완료: 안정적인 모델 이름으로 변경
+        const modelName = 'gemini-2.5-flash';
+        const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
 
-        async function callGemini(prompt, schema) {
-            const apiKey = getSavedApiKey();
-            if (!apiKey) {
-                showCustomToast("⚠️ 먼저 우측 상단 톱니바퀴를 눌러 Gemini API 키를 저장해 주세요.");
-                openSettings();
-                return null;
+    
+        const tempUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+
+        try {
+            const response = await fetch(`${tempUrl}?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                // API 요청 실패 시 에러 코드를 정확하게 확인해야 합니다.
+                throw new Error(`API 요청 실패: ${response.status}`);
             }
 
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-            const payload = { 
-                contents: [{ role: "user", parts: [{ text: prompt }] }], 
-                generationConfig: { responseMimeType: "application/json", responseSchema: schema } 
-            };
-            
-            try {
-                const response = await fetch(apiUrl, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(payload) 
-                });
-                if (!response.ok) throw new Error(`API 호출 실패 (코드: ${response.status})`);
-                const result = await response.json();
-                if (result.candidates && result.candidates.length > 0) {
-                    const text = result.candidates[0].content.parts[0].text;
-                    return JSON.parse(text);
-                } else throw new Error("API 결과가 없습니다.");
-            } catch (error) {
-                console.error("Gemini API 호출 오동작:", error);
-                aiContentContainerEl.innerHTML = `<p class="text-red-500 text-center text-sm font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i> API 오류: ${error.message}</p>`;
-                return null;
-            }
+            const result = await response.json();
+            const text = result.candidates[0].content.parts[0].text;
+            const parsedJson = JSON.parse(text);
+
+            return parsedJson;
+
+        } catch (error) {
+            console.error("Gemini API 호출 오류:", error);
+            return null;
         }
+    }
 
         async function generateExample() {
             if (currentCardIndex >= sessionWords.length) return;
