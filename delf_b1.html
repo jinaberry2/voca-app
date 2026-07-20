@@ -1105,7 +1105,7 @@
                 { french: "péage", definition: "n. m. (도로, 교량 따위의) 통행료, 톨게이트" },
                 { french: "transport en commun", definition: "n. m. 대중교통" },
                 { french: "arrêt", definition: "n. m. 멈춤, 정지, 정류장" },
-                { french: "déplacer", definition: "v. 옮겨 놓다, 이동시키다 (se déplacer v. 움직이다, 이동하다)" },
+                { french: "déplace", definition: "v. 옮겨 놓다, 이동시키다 (se déplacer v. 움직이다, 이동하다)" },
                 { french: "passage", definition: "n. m. 통행, 통과, 횡단, 통로" },
                 { french: "piéton(ne)", definition: "a. 보행자 전용의, n. 보행자" },
                 { french: "traverser", definition: "v. 횡단하다, 건너다, 가로지르다" },
@@ -1244,7 +1244,7 @@
                 { french: "à l’envers", definition: "à l’envers : 뒤집어서, 반대로, 반대 방향으로" },
                 { french: "à l’heure", definition: "à l’heure : 정시에, 정각에" },
                 { french: "à l’instant", definition: "à l’instant : 당장, 방금, 곧" },
-                { french: "à présent", definition: "à présent : 현재(는), 지금(은)" },
+                { french: "à présent", definition: "à Anthrop : 현재(는), 지금(은)" },
                 { french: "à tout moment", definition: "à tout moment : 끊임없이, 항상" },
                 { french: "à toute vitesse", definition: "à toute vitesse : 전속력으로, 아주 빠르게" },
                 { french: "avec calme", definition: "avec calme : 침착하게, 의연히" },
@@ -1505,7 +1505,7 @@
             }
         }
 
-        // --- AI API 통신 예문 엔진 (보안 및 노출 차단 방지 코드로 수정완료) ---
+        // --- AI API 통신 예문 엔진 (2026년 정식 버전 gemini-2.5-flash 패스로 전면 고정) ---
         function getSavedApiKey() {
             return localStorage.getItem('gemini_api_key') || "";
         }
@@ -1513,13 +1513,13 @@
         async function callGemini(prompt, schema) {
             const apiKey = getSavedApiKey();
             if (!apiKey) {
-                showCustomToast("⚠️ 우측 상단 톱니바퀴를 눌러 새로 발급받은 Gemini API 키를 저장해 주세요.");
+                showCustomToast("⚠️ 우측 상단 톱니바퀴를 눌러 발급받으신 Gemini API 키를 저장해 주세요.");
                 openSettings();
                 return null;
             }
 
-            // 모델 타겟을 안정화 표준 버전 패스로 강제 고정
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            // 구버전 1.5-flash 404 차단을 우회하기 위해 정식 패스인 gemini-2.5-flash로 전면 일치
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const payload = { 
                 contents: [{ role: "user", parts: [{ text: prompt }] }], 
                 generationConfig: { responseMimeType: "application/json", responseSchema: schema } 
@@ -1533,20 +1533,16 @@
                 });
                 
                 if (!response.ok) {
-                    if (response.status === 400 || response.status === 403) {
-                        throw new Error(`인증 에러 (코드: ${response.status}). 깃허브 보안 탐지로 블락된 키일 수 있으니 새 API 키를 발급받아 입력해 보세요.`);
-                    }
-                    throw new Error(`서버 응답 오류 (코드: ${response.status})`);
+                    throw new Error(`API 오류 (코드: ${response.status}). 키 권한 또는 서버 주소 매칭 실패.`);
                 }
                 
                 const result = await response.json();
                 if (result.candidates && result.candidates.length > 0) {
                     let text = result.candidates[0].content.parts[0].text;
-                    // AI의 마크다운 포맷팅 찌꺼기 텍스트 정제 (무한 로딩 완벽 방지)
                     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
                     return JSON.parse(text);
                 } else {
-                    throw new Error("API로부터 생성된 결과 텍스트가 비어있습니다.");
+                    throw new Error("API 결과 데이터가 비어있습니다.");
                 }
             } catch (error) {
                 console.error("Gemini API 호출 오동작:", error);
