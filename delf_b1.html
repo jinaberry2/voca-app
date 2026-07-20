@@ -1519,7 +1519,7 @@
             }
 
             // 구버전 1.5-flash 404 차단을 우회하기 위해 정식 패스인 gemini-2.5-flash로 전면 일치
-            const apiUrl = `https://generativelanguage.googleapis.com/v15/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const payload = { 
                 contents: [{ role: "user", parts: [{ text: prompt }] }], 
                 generationConfig: { responseMimeType: "application/json", responseSchema: schema } 
