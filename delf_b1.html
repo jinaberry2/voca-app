@@ -474,7 +474,7 @@
                 { french: "allumé(e)", definition: "a. 켜진" },
                 { french: "message", definition: "n. m. 메시지" },
                 { french: "marcher", definition: "v. 걷다, 작동하다" },
-                { french: "site Internet", definition: "n. m. 인터넷 사이체" },
+                { french: "site Internet", definition: "n. m. 인터넷 사이트" },
                 { french: "piratage", definition: "n. m. 해적 행위, 불법 복제" },
                 { french: "fraude informatique", definition: "n. f. 해킹, 컴퓨터 범죄" },
                 { french: "courrier électronique", definition: "n. m. 전자 우편" },
@@ -1505,7 +1505,7 @@
             }
         }
 
-        // --- AI API 통신 예문 엔진 (최신 엔드포인트 전면 개편) ---
+        // --- AI API 통신 예문 엔진 (보안 및 노출 차단 방지 코드로 수정완료) ---
         function getSavedApiKey() {
             return localStorage.getItem('gemini_api_key') || "";
         }
@@ -1513,13 +1513,13 @@
         async function callGemini(prompt, schema) {
             const apiKey = getSavedApiKey();
             if (!apiKey) {
-                showCustomToast("⚠️ 우측 상단 톱니바퀴를 눌러 발급받으신 Gemini API 키를 저장해 주세요.");
+                showCustomToast("⚠️ 우측 상단 톱니바퀴를 눌러 새로 발급받은 Gemini API 키를 저장해 주세요.");
                 openSettings();
                 return null;
             }
 
-            // Google AI Studio 최신 통합 모델 규격 주소인 v1beta의 gemini-2.5-flash 정식 패스로 일치시킴
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            // 모델 타겟을 안정화 표준 버전 패스로 강제 고정
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const payload = { 
                 contents: [{ role: "user", parts: [{ text: prompt }] }], 
                 generationConfig: { responseMimeType: "application/json", responseSchema: schema } 
@@ -1532,29 +1532,21 @@
                     body: JSON.stringify(payload) 
                 });
                 
-                // 만약 신규 발급 키 종류에 따라 v1beta 주소 매칭이 간혹 밀릴 경우 하위 호환을 위한 예외 처리 세팅
-                if (response.status === 404) {
-                    const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-                    const fallbackResponse = await fetch(fallbackUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    if (!fallbackResponse.ok) throw new Error(`API 호환 호출 실패 (코드: ${fallbackResponse.status})`);
-                    const fallbackResult = await fallbackResponse.json();
-                    return JSON.parse(fallbackResult.candidates[0].content.parts[0].text);
-                }
-
                 if (!response.ok) {
-                    throw new Error(`API 오류 (코드: ${response.status}). 키 권한이 부족하거나 잘못 입력되었을 수 있습니다.`);
+                    if (response.status === 400 || response.status === 403) {
+                        throw new Error(`인증 에러 (코드: ${response.status}). 깃허브 보안 탐지로 블락된 키일 수 있으니 새 API 키를 발급받아 입력해 보세요.`);
+                    }
+                    throw new Error(`서버 응답 오류 (코드: ${response.status})`);
                 }
                 
                 const result = await response.json();
                 if (result.candidates && result.candidates.length > 0) {
-                    const text = result.candidates[0].content.parts[0].text;
+                    let text = result.candidates[0].content.parts[0].text;
+                    // AI의 마크다운 포맷팅 찌꺼기 텍스트 정제 (무한 로딩 완벽 방지)
+                    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
                     return JSON.parse(text);
                 } else {
-                    throw new Error("API 결과가 없습니다.");
+                    throw new Error("API로부터 생성된 결과 텍스트가 비어있습니다.");
                 }
             } catch (error) {
                 console.error("Gemini API 호출 오동작:", error);
