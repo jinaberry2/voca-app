@@ -38,6 +38,7 @@
         }
         .button-group {
             margin-top: 0;
+            width: 100%;
         }
         .button-group button {
             display: flex;
@@ -61,6 +62,10 @@
         }
         #quiz-btn {
             background-color: #10b981;
+        }
+        /* DELF B1 전용 스타일 정의 */
+        #delf-btn {
+            background-color: #2563eb;
         }
         .button-group button:hover {
             transform: translateY(-2px) scale(1.01);
@@ -140,6 +145,12 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256"><path d="M232,128a16,16,0,0,1-16,16H178.67a16,16,0,0,1-13.43-7.79l-11.45-22.92a16,1,0,0,0-14.16-8.29H120a16,16,0,0,0-15.1,10.79l-11.45,22.92a16,16,0,0,1-13.43,7.79H40a16,16,0,0,1-16-16V40A16,16,0,0,1,40,24H216a16,16,0,0,1,16,16Z"></path><path d="M216,168a16,16,0,0,1-16,16H56V48H216a16,16,0,0,1,16,16V152A16,16,0,0,1,216,168ZM128,192a64,64,0,1,0,64,64A64,64,0,0,0,128,192Zm0,112a48,48,0,1,1,48-48A48,48,0,0,1,128,304Z"></path></svg>
                 <span>단어 시험 보기</span>
             </button>
+            
+            <!-- DELF B1 이동 버튼 신규 추가 -->
+            <button id="delf-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                <span>DELF B1 학습하기</span>
+            </button>
         </div>
     </div>
 
@@ -163,6 +174,7 @@
         const modalTitle = document.getElementById('modal-title');
         const flashcardBtn = document.getElementById('flashcard-btn');
         const quizBtn = document.getElementById('quiz-btn');
+        const delfBtn = document.getElementById('delf-btn'); // DELF 버튼 바인딩
 
         let selectedMode = '';
 
@@ -178,6 +190,11 @@
 
         flashcardBtn.addEventListener('click', () => openVLevelMenu('flashcard'));
         quizBtn.addEventListener('click', () => openVLevelMenu('quiz'));
+        
+        // DELF B1 버튼 클릭 이벤트 추가
+        delfBtn.addEventListener('click', () => {
+            window.location.href = 'delf_b1.html';
+        });
 
         vLevelList.querySelectorAll('.v-level-button').forEach(button => {
             button.addEventListener('click', () => {
@@ -189,7 +206,6 @@
                         window.location.href = `word_list_v201.html`;
                     } else if (selectedLevel === '301') {
                         window.location.href = `word_list_v301.html`;
-                    // V301_1 로직 추가
                     } else if (selectedLevel === '301_1') { 
                         window.location.href = `word_list_v301_1.html`;
                     }
@@ -203,10 +219,7 @@
                         window.location.href = `word_quiz_v201.html`;
                     } else if (selectedLevel === '301') {
                         window.location.href = `word_quiz_v301.html`;
-                    // V301_1 로직 추가 (quiz 파일이 있다면)
                     } else if (selectedLevel === '301_1') { 
-                        // word_quiz_v301_1.html로 연결하거나, 파일이 없다고 알립니다.
-                        // 현재 word_quiz_v301_1.html에 대한 정보가 없어, 파일이 없다고 알리도록 설정합니다.
                         alert(`V${selectedLevel} 단어 시험 파일은 아직 준비되지 않았습니다.`);
                     }
                     else {
